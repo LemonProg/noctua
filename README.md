@@ -163,6 +163,8 @@ never switch to pay-per-use billing by accident.
 
 - Noctua reads the subscription quota (5-hour and 7-day windows) from each response and shows it in the interface.
 - Above `QUOTA_SEUIL_POURCENT` (90 % by default), the agency **pauses** until the reset.
+- Need your subscription right now? The **pause button** in the menu stops every Claude call for 1 h, 3 h, 5 h or
+  until you resume. Approved posts still go out on schedule.
 - Heavy tasks wait for the night. A night call starts only if its 5-hour window **ends before 8 am**, so the agency
   never eats into your morning.
 - Models are matched to the task:

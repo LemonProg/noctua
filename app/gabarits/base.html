@@ -61,6 +61,19 @@
           </form>
         </div>
       </div>
+      {% if bandeau.pause %}
+        <form method="post" action="/pause/reprendre" class="pause-commande">
+          <button class="btn btn-primaire btn-petit">{{ icone("arrow-counter-clockwise") }}<span>Reprendre l'agence</span></button>
+        </form>
+      {% else %}
+        <details class="pause-commande">
+          <summary class="btn btn-secondaire btn-petit" title="Couper l'agence pour utiliser votre abonnement Claude">{{ icone("clock-counter-clockwise") }}<span>Mettre en pause</span></summary>
+          <form method="post" action="/pause" class="pause-durees">
+            {% for h in bandeau.durees_pause %}<button class="btn btn-fantome btn-petit" name="heures" value="{{ h }}">{{ h }} h</button>{% endfor %}
+            <button class="btn btn-fantome btn-petit" name="heures" value="">Jusqu'à reprise</button>
+          </form>
+        </details>
+      {% endif %}
       {{ lien_nav("/reglages", "reglages", "Réglages", actif, bandeau.nb_echecs + bandeau.nb_directions, alerte=bandeau.nb_echecs > 0) }}
     </div>
   </aside>
@@ -78,6 +91,13 @@
     </header>
 
     <main class="contenu {{ self.largeur() }}">
+      {% if bandeau.pause %}
+        <div class="alerte-bloc alerte-pause">{{ icone("clock-counter-clockwise") }}<span>
+          <strong>Agence en pause{% if bandeau.pause.jusqu_a %} jusqu'à {{ bandeau.pause.jusqu_a|date_fr }}{% else %} jusqu'à ce que vous la repreniez{% endif %}.</strong>
+          Aucun appel à Claude : votre abonnement est tout à vous. Les posts validés sont quand même publiés à leur horaire.{% if not bandeau.pause.jusqu_a %} La production de nuit attend aussi.{% endif %}</span>
+          <form method="post" action="/pause/reprendre" class="pousser"><button class="btn btn-secondaire btn-petit">Reprendre</button></form>
+        </div>
+      {% endif %}
       {% if bandeau.disque.alerte %}
         <div class="alerte-bloc alerte-danger">{{ icone("warning-circle") }}<span>{{ bandeau.disque.alerte }}</span></div>
       {% endif %}

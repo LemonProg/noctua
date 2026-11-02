@@ -107,6 +107,7 @@ Everything runs on the Claude subscription: its quota (5-hour and 7-day windows)
   - claude-sonnet-5-5: medium-difficulty internal analysis and writing (rejection analysis, review, statistics summary, routine market watch).
   - claude-opus-5-5: complex or high-stakes tasks (strategy, art direction) and, always, any content generation.
   - Effort: low for mechanical work, medium by default, high for creation and hard reasoning; xhigh and max only when quality truly requires it.
+- **Pause set by the human** ("Mettre en pause" button in the menu: 1 h, 3 h, 5 h or until resumed): no Claude call while it lasts. The worker takes no task, and an agent in the middle of a task stops before its next call (the task is postponed without using up an attempt). Publishing approved posts, statistics, notifications and purge keep running.
 - Above `QUOTA_SEUIL_POURCENT` (90 % by default) on a window, the agency pauses until the reset. At night, the 5-hour window may be used up to 100 % (it ends before the human wakes up); the weekly threshold still applies.
 
 ## Night production

@@ -34,6 +34,7 @@ from noyau.statistiques import Statistiques
 from noyau.planificateur import Planificateur
 from noyau.purge import Purge
 from noyau.publication import Publications
+from noyau.pause import Pause
 from noyau.quota import Quota
 from noyau.stockage import Bibliotheque, dossier_de_travail, nettoyer_travail
 
@@ -133,6 +134,7 @@ class Worker:
         claude = MoteurClaude(self.config, couts, self.commande_claude)
         planificateur = Planificateur(conn, file, self.horloge) if voie == "normale" else None
         creneaux = Creneaux.depuis_config(self.config, conn, self.horloge)
+        pause_humaine = Pause(conn, self.horloge)
         prochaine_planification = 0.0
         try:
             while not self.arret.is_set():
@@ -152,7 +154,8 @@ class Worker:
                         for tache_id in creneaux.reevaluer(file):
                             journal.info("Tâche %s : ne peut plus attendre la nuit, lancée en journée", tache_id)
                         # La mesure est un appel : la nuit, elle obéit à la règle de la fenêtre comme le reste.
-                        if creneaux.autorises() and Quota(conn, self.horloge).a_actualiser(AGE_MAX_MESURE_QUOTA):
+                        if creneaux.autorises() and not pause_humaine.etat() and \
+                                Quota(conn, self.horloge).a_actualiser(AGE_MAX_MESURE_QUOTA):
                             with dossier_de_travail(self.config.dossier_temp) as dossier:
                                 claude.actualiser_quota(dossier)
                     except Exception:
@@ -161,6 +164,14 @@ class Worker:
                 pause = self._pauses.get(voie, 0) - time.monotonic()
                 if pause > 0:
                     self.arret.wait(min(pause, 60))
+                    continue
+                try:
+                    en_pause = pause_humaine.etat() is not None
+                except Exception:
+                    journal.exception("Voie %s : lecture de la pause impossible", voie)
+                    en_pause = False
+                if en_pause:  # pause décidée par l'humain : aucune tâche prise
+                    self.arret.wait(min(self.attente * 5, 30))
                     continue
                 try:
                     tache = file.prendre([a.id for a in agents], voie, creneaux.autorises())

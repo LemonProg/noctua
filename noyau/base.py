@@ -12,7 +12,7 @@ from pathlib import Path
 STATUTS = ("à_faire", "en_cours", "à_valider", "validé", "refusé", "terminé", "échec")
 VOIES = ("normale", "rendu")
 
-VERSION_SCHEMA = 15
+VERSION_SCHEMA = 16
 
 
 def _liste(valeurs: tuple[str, ...]) -> str:
@@ -330,9 +330,17 @@ CREATE TABLE modifications (
     cree_le    TEXT NOT NULL
 );
 """
+SCHEMA_V16 = """
+-- Pause de l'agence décidée par l'humain (noyau/pause.py) : une ligne au plus ; jusqu_a vide = sans limite.
+CREATE TABLE pause (
+    id       INTEGER PRIMARY KEY CHECK (id = 1),
+    depuis   TEXT NOT NULL,
+    jusqu_a  TEXT
+);
+"""
 MIGRATIONS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3, 4: SCHEMA_V4, 5: SCHEMA_V5, 6: SCHEMA_V6, 7: SCHEMA_V7,
               8: SCHEMA_V8, 9: SCHEMA_V9, 10: SCHEMA_V10, 11: SCHEMA_V11, 12: SCHEMA_V12,
-              13: SCHEMA_V13, 14: SCHEMA_V14, 15: SCHEMA_V15}
+              13: SCHEMA_V13, 14: SCHEMA_V14, 15: SCHEMA_V15, 16: SCHEMA_V16}
 
 
 def _initialiser(conn: sqlite3.Connection) -> None:

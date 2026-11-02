@@ -25,6 +25,7 @@ from noyau.couts import JournalCouts
 from noyau.erreurs import ErreurDefinitive, ErreurTemporaire
 from noyau.modeles import HAIKU, MODELES, OPUS
 from noyau.creneaux import Creneaux
+from noyau.pause import Pause
 from noyau.quota import Quota
 
 MODELE = OPUS  # modèle par défaut
@@ -57,6 +58,10 @@ class QuotaAtteint(ErreurTemporaire):
     pass
 
 
+class PauseHumaine(ErreurTemporaire):
+    """L'humain a mis l'agence en pause : la tâche attend sa reprise (vérifiée chaque minute)."""
+
+
 class MoteurClaude:
     def __init__(self, config: Config, couts: JournalCouts, commande: Sequence[str] = ("claude",),
                  delai_max_secondes: float = DELAI_MAX_SECONDES):
@@ -86,6 +91,9 @@ class MoteurClaude:
         """
         if modele not in MODELES:
             raise ErreurDefinitive(f"Modèle inconnu : {modele} (attendus : {', '.join(MODELES)})")
+        if Pause(self.couts.conn).etat():
+            raise PauseHumaine("Agence mise en pause par vous : aucun appel à Claude jusqu'à la reprise",
+                               timedelta(minutes=1))
         quota = Quota(self.couts.conn)
         # La nuit, la fenêtre de 5 heures se termine avant le réveil de l'humain : elle peut servir entièrement.
         nuit = Creneaux.depuis_config(self.config).periode_nuit()

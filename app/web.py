@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Request, UploadFile
@@ -46,6 +46,7 @@ from noyau.publication import PublicationErreur, Publications
 from noyau.statistiques import CHIFFRES, LIBELLES, Statistiques, StatistiquesErreur, engagement, explication
 from noyau.purge import Purge
 from noyau.claude import MoteurClaude
+from noyau.pause import DUREES_HEURES, Pause
 from noyau.quota import Quota
 from noyau.references import References
 from noyau.rejets import rejeter
@@ -192,6 +193,8 @@ def creer_app(config: Config, horloge: Horloge = maintenant_utc, racine: Path = 
             "nb_corbeille": len(s.biblio.lister("corbeille")),
             "nb_lecons": len(s.lecons.lister("proposée")),
             "nb_directions": len(s.directions.lister("proposée")),
+            "pause": Pause(s.conn, horloge).etat(),
+            "durees_pause": DUREES_HEURES,
         }
         return gabarits.TemplateResponse(request, gabarit, {
             "bandeau": bandeau, "actif": rubrique(request.url.path), "info": request.query_params.get("info"),
@@ -871,6 +874,29 @@ def creer_app(config: Config, horloge: Horloge = maintenant_utc, racine: Path = 
         quand = "cette nuit, prête demain matin" if nuit else "tout de suite"
         regle = f" Elle devient aussi la règle {modification.lecon_id}." if modification.lecon_id else ""
         return rediriger(retour, info=f"Modification du contenu {tache_id} demandée : nouvelle version {quand}.{regle}")
+
+    # --- Pause de l'agence décidée par l'humain ---
+
+    def page_de_retour(request: Request) -> str:
+        """Page d'où vient le clic (chemin seulement, jamais une autre adresse)."""
+        chemin = urlparse(request.headers.get("referer") or "").path
+        return chemin if chemin.startswith("/") and not chemin.startswith("//") else "/"
+
+    @app.post("/pause")
+    def mettre_en_pause(request: Request, heures: str = Form("")):
+        retour = page_de_retour(request)
+        if heures and (not heures.isdigit() or int(heures) not in DUREES_HEURES):
+            return rediriger(retour, erreur=f"Durée de pause inconnue : {heures}")
+        with ouvrir() as s:
+            etat = Pause(s.conn, horloge).activer(timedelta(hours=int(heures)) if heures else None)
+        quand = f"jusqu'à {etat.jusqu_a.astimezone(FUSEAU):%H:%M}" if etat.jusqu_a else "jusqu'à ce que vous la repreniez"
+        return rediriger(retour, info=f"Agence en pause {quand} : votre abonnement Claude est tout à vous.")
+
+    @app.post("/pause/reprendre")
+    def reprendre(request: Request):
+        with ouvrir() as s:
+            Pause(s.conn, horloge).reprendre()
+        return rediriger(page_de_retour(request), info="L'agence reprend le travail.")
 
     @app.post("/quota/actualiser")
     def actualiser_quota(request: Request):

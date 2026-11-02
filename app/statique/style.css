@@ -1205,3 +1205,13 @@ a.resultat:hover { border-color: var(--bordure-forte); box-shadow: var(--ombre-h
 .consigne-corps .extrait { margin: 0; }
 .modif form .segments { margin: 4px 0; }
 .modif form .case { margin: 2px 0; }
+
+/* Pause de l'agence décidée par l'humain */
+.alerte-pause { background: var(--attente-doux); color: var(--attente); border-color: color-mix(in srgb, var(--attente) 30%, transparent); align-items: center; }
+.alerte-pause .pousser { margin-left: auto; }
+.pause-commande { padding: 0 8px; }
+.pause-commande summary { list-style: none; width: 100%; justify-content: center; }
+.pause-commande summary::-webkit-details-marker { display: none; }
+.pause-commande > form .btn { width: 100%; justify-content: center; }
+.pause-durees { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 6px; }
+.pause-durees button:last-child { grid-column: 1 / -1; }

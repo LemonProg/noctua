@@ -6,7 +6,8 @@
 {% block sous_titre %}{{ JOURS[maintenant.weekday()]|capitalize }} {{ maintenant.day }} {{ MOIS[maintenant.month - 1] }} · voici où en est l'agence.{% endblock %}
 {% block largeur %}large{% endblock %}
 {% block actions %}
-  {% if en_pause %}<span class="etat-agence pause" title="Abonnement Claude au-dessus du seuil : reprise à la remise à zéro">{{ icone("warning-circle") }}En pause (quota)</span>
+  {% if bandeau.pause %}<span class="etat-agence pause" title="Mise en pause par vous">{{ icone("clock-counter-clockwise") }}En pause{% if bandeau.pause.jusqu_a %} jusqu'à {{ bandeau.pause.jusqu_a|date_fr }}{% endif %}</span>
+  {% elif en_pause %}<span class="etat-agence pause" title="Abonnement Claude au-dessus du seuil : reprise à la remise à zéro">{{ icone("warning-circle") }}En pause (quota)</span>
   {% elif nuit %}<span class="etat-agence nuit" title="Les productions lourdes tournent la nuit">{{ icone("sparkle") }}Production de nuit</span>
   {% else %}<span class="etat-agence active">{{ icone("check-circle") }}Agence active</span>{% endif %}
 {% endblock %}
