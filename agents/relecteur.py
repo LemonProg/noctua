@@ -110,8 +110,11 @@ class AgentRelecteur(Agent):
 
 
 def script_du_reel(tache: Tache, outils: Outils) -> str:
-    """Script (intention et scènes) porté par le message `asset` dont le post est issu."""
+    """Script (intention et scènes) porté par le message `asset` dont le post est issu, en remontant les
+    retouches de texte demandées par l'humain (le reel, lui, n'a pas changé)."""
     parent = outils.file.lire(tache.parent_id) if tache.parent_id else None
+    while parent is not None and parent.type in ("modification_texte", "post_brouillon"):
+        parent = outils.file.lire(parent.parent_id) if parent.parent_id else None
     if parent is None or parent.type != "asset":
         return "(non disponible)"
     return parent.contenu["prompt_ou_script"].split("\n\nComposition :", 1)[0]

@@ -178,6 +178,8 @@ class AgentOrchestrateur(Agent):
         post = outils.file.lire(corrections.contenu_id)
         if corrections.origine == "relecteur":
             creneau = "jour" if post.creneau == "jour" else "nuit_suite"
+        elif corrections.immediat:
+            creneau = "jour"  # demande de modification de l'humain, « tout de suite »
         else:
             creneau = self._creneaux(outils).decider(brief.date_prevue)
         outils.file.creer(brief, parent_id=tache.id, creneau=creneau)

@@ -19,7 +19,7 @@ FUSEAU = ZoneInfo("Europe/Paris")
 BRIEFS = ("brief_texte", "brief_visuel", "brief_video")
 EN_COURS = ("à_faire", "en_cours")
 # Tâches qui produisent le post ; l'analyse d'un rejet (agent_erreurs) ne retarde pas la publication.
-PRODUCTION = (*BRIEFS, "asset", "post_brouillon", "corrections")
+PRODUCTION = (*BRIEFS, "asset", "post_brouillon", "corrections", "modification_texte")
 
 
 @dataclass

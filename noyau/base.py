@@ -12,7 +12,7 @@ from pathlib import Path
 STATUTS = ("à_faire", "en_cours", "à_valider", "validé", "refusé", "terminé", "échec")
 VOIES = ("normale", "rendu")
 
-VERSION_SCHEMA = 14
+VERSION_SCHEMA = 15
 
 
 def _liste(valeurs: tuple[str, ...]) -> str:
@@ -297,9 +297,42 @@ CREATE TABLE sons (
     cree_le       TEXT NOT NULL
 );
 """
+SCHEMA_V15 = """
+-- Règles ajoutées spontanément par l'humain : leçons d'origine « humain », sans tâche ni contenu d'origine.
+-- SQLite ne modifie pas une contrainte CHECK : la table est recréée (aucune autre table ne la référence).
+CREATE TABLE lecons_v15 (
+    id                INTEGER PRIMARY KEY,
+    tache_id          INTEGER REFERENCES taches(id),
+    origine_rejet     TEXT NOT NULL CHECK (origine_rejet IN ('refus_humain', 'ne_pas_utiliser', 'relecteur', 'humain')),
+    erreur            TEXT NOT NULL,
+    cause             TEXT NOT NULL,
+    regle             TEXT NOT NULL,
+    agents_concernes  TEXT NOT NULL CHECK (json_valid(agents_concernes)),
+    statut            TEXT NOT NULL DEFAULT 'proposée' CHECK (statut IN ('proposée', 'validée', 'refusée')),
+    commentaire       TEXT,
+    cree_le           TEXT NOT NULL,
+    decide_le         TEXT
+);
+INSERT INTO lecons_v15 SELECT id, tache_id, origine_rejet, erreur, cause, regle, agents_concernes, statut,
+    commentaire, cree_le, decide_le FROM lecons;
+DROP TABLE lecons;
+ALTER TABLE lecons_v15 RENAME TO lecons;
+CREATE INDEX lecons_statut ON lecons (statut);
+-- Demandes de modification de l'humain (noyau/modifications.py) : le post d'origine est remplacé par une
+-- nouvelle version, sans être compté comme un refus ni analysé pour en tirer une leçon.
+CREATE TABLE modifications (
+    id         INTEGER PRIMARY KEY,
+    post_id    INTEGER NOT NULL UNIQUE REFERENCES taches(id),
+    tache_id   INTEGER NOT NULL REFERENCES taches(id),
+    consignes  TEXT NOT NULL,
+    portee     TEXT NOT NULL CHECK (portee IN ('texte', 'tout')),
+    lecon_id   INTEGER REFERENCES lecons(id),
+    cree_le    TEXT NOT NULL
+);
+"""
 MIGRATIONS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3, 4: SCHEMA_V4, 5: SCHEMA_V5, 6: SCHEMA_V6, 7: SCHEMA_V7,
               8: SCHEMA_V8, 9: SCHEMA_V9, 10: SCHEMA_V10, 11: SCHEMA_V11, 12: SCHEMA_V12,
-              13: SCHEMA_V13, 14: SCHEMA_V14}
+              13: SCHEMA_V13, 14: SCHEMA_V14, 15: SCHEMA_V15}
 
 
 def _initialiser(conn: sqlite3.Connection) -> None:

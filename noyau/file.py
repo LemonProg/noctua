@@ -13,7 +13,7 @@ from noyau.messages import HUMAIN, Message, valider
 
 # Tâches gourmandes (voir noyau/creneaux.py) : la suite d'une chaîne de nuit reste de nuit.
 LOURDES = frozenset({"brief_texte", "brief_visuel", "brief_video", "asset", "post_brouillon",
-                     "demande_veille", "demande_planning", "analyse_style"})
+                     "demande_veille", "demande_planning", "analyse_style", "modification_texte"})
 
 TENTATIVES_MAX = 3
 

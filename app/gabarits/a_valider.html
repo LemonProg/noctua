@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icone, etat_vide, badge_reseau %}
+{% from "_modifier.html" import formulaire_modification with context %}
 {% block titre %}À valider{% endblock %}
 {% block sous_titre %}Relisez chaque contenu. Rien n'est publié sans votre accord.{% endblock %}
 {% block actions %}<a href="/brief" class="btn btn-primaire">{{ icone("plus") }}<span>Nouveau brief</span></a>{% endblock %}
@@ -9,7 +10,7 @@
 {% endif %}
 {% if posts %}
 <p class="raccourcis">
-  <span class="raccourcis-clavier"><kbd>J</kbd> <kbd>K</kbd> post suivant ou précédent · <kbd>V</kbd> valider · <kbd>R</kbd> refuser · <kbd>E</kbd> écarter</span>
+  <span class="raccourcis-clavier"><kbd>J</kbd> <kbd>K</kbd> post suivant ou précédent · <kbd>V</kbd> valider · <kbd>M</kbd> modifier · <kbd>R</kbd> refuser · <kbd>E</kbd> écarter</span>
   <span class="raccourcis-geste">Glissez un post à droite pour le valider, à gauche pour le refuser.</span>
 </p>
 {% endif %}
@@ -49,6 +50,7 @@
         </div>
         <button class="btn btn-primaire">{{ icone("check") }}<span>Valider</span></button>
       </form>
+      {{ formulaire_modification(t, "/a-valider") }}
       <details class="refus">
         <summary class="btn btn-secondaire">{{ icone("x") }}<span>Refuser</span></summary>
         <form method="post" action="/taches/{{ t.id }}/refuser" class="champ">

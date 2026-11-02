@@ -14,7 +14,7 @@ MODELES = (HAIKU, SONNET, OPUS)
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 # Messages qui commandent une génération de contenu : Opus 5.5 imposé.
-TYPES_CONTENU = frozenset({"brief_texte", "brief_visuel", "brief_video", "asset"})
+TYPES_CONTENU = frozenset({"brief_texte", "brief_visuel", "brief_video", "asset", "modification_texte"})
 
 # Repères pour l'orchestrateur (phase 4), repris dans docs/architecture.md.
 GUIDE_DU_CHOIX = """- claude-haiku-5-5 : tâches simples et courtes (tri, classement, extraction, vérification mécanique).

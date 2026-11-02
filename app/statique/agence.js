@@ -100,8 +100,9 @@ document.addEventListener("keydown", (evenement) => {
     j: () => choisir(liste[liste.indexOf(carte) + 1] || carte),
     k: () => choisir(liste[liste.indexOf(carte) - 1] || carte),
     v: () => validerAvecDelai(carte),
-    r: () => ouvrirFormulaire(carte, "details.refus:not(.ecart)"),
+    r: () => ouvrirFormulaire(carte, "details.refus:not(.ecart):not(.modif)"),
     e: () => ouvrirFormulaire(carte, "details.ecart"),
+    m: () => ouvrirFormulaire(carte, "details.modif"),
   };
   const action = actions[evenement.key.toLowerCase()];
   if (action) {
@@ -143,7 +144,7 @@ function finirGeste() {
   carte.dataset.geste = "";
   geste = null;
   if (action === "valider") validerAvecDelai(carte);
-  if (action === "refuser") ouvrirFormulaire(carte, "details.refus:not(.ecart)");
+  if (action === "refuser") ouvrirFormulaire(carte, "details.refus:not(.ecart):not(.modif)");
   if (Math.abs(dx) > 10) courante = carte;
 }
 

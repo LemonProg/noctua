@@ -1196,3 +1196,12 @@ a.resultat:hover { border-color: var(--bordure-forte); box-shadow: var(--ombre-h
   .son-infos { flex-basis: calc(100% - 52px); }
   .son-ligne audio { order: 3; width: 100%; max-width: none; }
 }
+
+/* Consignes : règles ajoutées par l'humain et demandes de modification */
+.cases { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.consigne-regle { margin-bottom: 14px; }
+.consigne-corps { display: flex; gap: 14px; align-items: flex-start; }
+.consigne-vignette { width: 72px; height: 90px; object-fit: cover; border-radius: 8px; flex: none; background: var(--surface-douce); }
+.consigne-corps .extrait { margin: 0; }
+.modif form .segments { margin: 4px 0; }
+.modif form .case { margin: 2px 0; }

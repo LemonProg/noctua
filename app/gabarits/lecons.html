@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icone, etat_vide, nom_agent %}
 {% block titre %}Leçons{% endblock %}
-{% block sous_titre %}Ce que l'agence retient de chaque contenu rejeté. Validées, elles s'appliquent à tous les agents.{% endblock %}
+{% block sous_titre %}Ce que l'agence retient de chaque contenu rejeté, et les règles que vous ajoutez (page Consignes). Validées, elles s'appliquent à tous les agents.{% endblock %}
 {% block contenu %}
 <h2 class="section-titre">À valider{% if proposees %} <span class="compteur">{{ proposees|length }}</span>{% endif %}</h2>
 {% if not proposees %}
@@ -49,7 +49,7 @@
       <p class="regle-active">{{ l.regle }}</p>
       <form method="post" action="/lecons/{{ l.id }}/retirer" class="pousser"><button class="btn btn-fantome btn-petit">Retirer</button></form>
     </div>
-    <p class="meta">{% for agent in l.agents_concernes %}{{ nom_agent(agent) }}{% if not loop.last %}, {% endif %}{% endfor %} · validée le {{ l.decide_le|date_fr }}</p>
+    <p class="meta">{% for agent in l.agents_concernes %}{{ nom_agent(agent) }}{% if not loop.last %}, {% endif %}{% endfor %} · {{ "ajoutée par vous" if l.origine_rejet == "humain" else "validée" }} le {{ l.decide_le|date_fr }}</p>
   </div>
 {% endfor %}
 </div>

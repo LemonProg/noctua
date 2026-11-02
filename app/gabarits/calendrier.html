@@ -3,7 +3,7 @@
 {% set JOURS = ["Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim."] %}
 {# Chaque tâche de la lignée, décrite par le travail de l'agent qui la traite. #}
 {% set ETAPES = {"brief_visuel": "Création du visuel", "brief_video": "Création de la vidéo", "brief_texte": "Rédaction du texte",
-  "asset": "Rédaction du texte", "post_brouillon": "Relecture et validation", "corrections": "Nouvelle version demandée",
+  "asset": "Rédaction du texte", "post_brouillon": "Relecture et validation", "corrections": "Nouvelle version demandée", "modification_texte": "Retouche du texte demandée",
   "contenu_rejete": "Analyse du rejet", "lecon": "Leçon proposée", "demande_publication": "Publication sur Instagram"} %}
 {% set MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"] %}
 {% set dimanche = jours[-1].date %}
@@ -161,6 +161,7 @@
               <div class="ligne-entete"><strong>{{ ETAPES.get(t.type, NOMS_TYPES.get(t.type, t.type)) }}</strong>{{ statut(t.statut) }}</div>
               <p class="meta">{{ NOMS_AGENTS.get(t.agent, t.agent) }} · {{ t.cree_le|date_fr }}{% if t.contenu.modele %} · {{ t.contenu.modele }}{% endif %}{% if t.contenu.effort %} · effort {{ t.contenu.effort }}{% endif %}{% if t.tentatives > 1 %} · {{ t.tentatives }} tentatives{% endif %}</p>
               {% if t.type == "corrections" %}<ul class="problemes">{% for p in t.contenu.problemes %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+              {% if t.type == "modification_texte" %}<ul class="problemes">{% for p in t.contenu.consignes %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
               {% if t.type == "lecon" %}<p class="extrait">{{ t.contenu.regle }}</p>{% endif %}
               {% if t.commentaire %}<p class="commentaire">{{ icone("info") }}<span>{{ t.commentaire }}</span></p>{% endif %}
               {% if t.erreur and t.statut != "terminé" %}<p class="commentaire erreur">{{ icone("warning-circle") }}<span>{{ t.erreur }}</span></p>{% endif %}

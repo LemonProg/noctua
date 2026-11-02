@@ -40,7 +40,7 @@ planner (Sunday) ──► agent_analyste ──► report ───────
 | `agent_veille` | Opus 5.5 + web search | weekly trigger | market report: competitors, formats and angles that work, cadence, recommendations, sources |
 | `agent_visuel` | Opus 5.5 + headless Chromium | visual brief + footage + brand guide + art direction + style references; style analysis | asset (image or carousel) + the HTML used; proposed art direction |
 | `agent_video` | Opus 5.5 + HyperFrames | video brief + footage + brand guide | video asset (MP4) + script |
-| `agent_redacteur` | Opus 5.5 | text brief + assets + brand guide | draft post (caption, media, network, schedule) |
+| `agent_redacteur` | Opus 5.5 | text brief + assets + brand guide; `modification_texte` (text edit requested by the human) | draft post (caption, media, network, schedule) |
 | `agent_relecteur` | Sonnet 5.5 (medium effort by default) | draft post + brand guide | "to approve", or corrections |
 | `agent_erreurs` | Sonnet 5.5 | rejected content + brand guide + lessons | proposed lesson (approved by the human) |
 | `agent_analyste` | Sonnet 5.5 (medium effort by default) | analysis request (Sunday 7 pm) + post statistics (manual, Meta Business Suite import, then API) | weekly report, read by the orchestrator when planning |
@@ -58,7 +58,8 @@ planner (Sunday) ──► agent_analyste ──► report ───────
 | `asset` | visual / video agent → writer | brief id, type, file(s) (one image or carousel slides), prompt or script |
 | `analyse_style` | human → agent_visuel | style references to analyse; produces an art direction to approve |
 | `post_brouillon` | writer → reviewer | caption, media, network, planned time |
-| `corrections` | reviewer → orchestrator | id, list of issues |
+| `corrections` | reviewer or human → orchestrator | id, list of issues; `immediat` for a modification requested "right now" |
+| `modification_texte` | human → agent_redacteur | post id, requests: the current caption is edited, same media and schedule (Consignes page, not a rejection) |
 | `rapport` | analyst → orchestrator | period, key figures, recommendations, summary, what works, what doesn't |
 | `contenu_rejete` | reviewer / human → agent_erreurs | content id, rejection origin (human refusal, "do not use", reviewer corrections), content, brief, comment or corrections |
 | `demande_analyse` | planner or human → agent_analyste | target week, force (analyse even without new statistics); model and effort |
@@ -78,6 +79,7 @@ Rules:
 
 - Content rejected by the reviewer goes back to the orchestrator with its corrections before reaching the approval queue.
 - Content rejected by the human goes back to the orchestrator with the comment.
+- A **modification request** from the human (Consignes page or the approval queue) is not a rejection: no `contenu_rejete`, no lesson. The post leaves the queue (even if approved, as long as it is not published) and a new version is produced: `modification_texte` to the writer (caption only, visual kept) or `corrections` to the orchestrator (redo everything). The human can also add rules directly: they go straight into `lecons.md`.
 - Any rejected content also produces a `contenu_rejete` message for `agent_erreurs`. The proposed lesson goes through the approval queue; only lessons approved by the human enter `lecons.md`.
 - Trashed content is deleted only once its analysis is finished. If the analysis is not done after 24 h, the delay is extended as long as disk space allows. If the disk drops below the alert threshold, the interface warns the human, who chooses: delete without analysis or free up space.
 

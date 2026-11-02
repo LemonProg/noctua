@@ -3,6 +3,8 @@
 agent_erreurs propose une leçon ; elle arrive dans la file de validation (tâche « lecon » pour l'humain)
 et dans la table `lecons` (statut « proposée »). Seules les leçons validées sont recopiées dans
 lecons.md, lu par tous les agents. La table est la source de vérité ; lecons.md est régénéré.
+
+L'humain peut aussi ajouter spontanément une règle (origine « humain ») : elle est validée d'emblée.
 """
 
 import json
@@ -16,7 +18,9 @@ from noyau.config import RACINE
 from noyau.contexte import ENTETE_LECONS
 from noyau.file import File
 from noyau.horloge import Horloge, maintenant_utc
-from noyau.messages import Lecon
+from noyau.messages import AGENTS, Lecon
+
+LONGUEUR_MAX_REGLE = 300  # comme une règle proposée, modifiable à la validation (champ de 300 caractères)
 
 
 class LeconErreur(Exception):
@@ -26,7 +30,7 @@ class LeconErreur(Exception):
 @dataclass(frozen=True)
 class LeconInfo:
     id: int
-    tache_id: int
+    tache_id: int | None  # aucune pour une règle ajoutée par l'humain
     origine_rejet: str
     erreur: str
     cause: str
@@ -70,6 +74,26 @@ class Lecons:
             (tache_id, origine_rejet, lecon.erreur, lecon.cause, lecon.regle,
              json.dumps(lecon.agents_concernes), self._date()),
         ).lastrowid
+
+    def ajouter(self, regle: str, agents_concernes: list[str]) -> LeconInfo:
+        """Règle écrite par l'humain : active tout de suite (recopiée dans lecons.md)."""
+        regle = " ".join((regle or "").split())
+        if not regle:
+            raise LeconErreur("La règle est vide")
+        if len(regle) > LONGUEUR_MAX_REGLE:
+            raise LeconErreur(f"Règle trop longue ({len(regle)} caractères, {LONGUEUR_MAX_REGLE} au plus)")
+        inconnus = set(agents_concernes) - set(AGENTS)
+        if not agents_concernes or inconnus:
+            raise LeconErreur("Choisissez au moins un agent concerné" if not agents_concernes
+                              else f"Agents inconnus : {', '.join(sorted(inconnus))}")
+        date = self._date()
+        lecon_id = self.conn.execute(
+            "INSERT INTO lecons (tache_id, origine_rejet, erreur, cause, regle, agents_concernes, statut, cree_le, "
+            "decide_le) VALUES (NULL, 'humain', '', '', ?, ?, 'validée', ?, ?)",
+            (regle, json.dumps(agents_concernes), date, date),
+        ).lastrowid
+        self.regenerer()
+        return self.lire(lecon_id)
 
     def valider(self, lecon_id: int, regle: str | None = None) -> LeconInfo:
         """Valide la leçon, éventuellement avec une règle reformulée par l'humain."""

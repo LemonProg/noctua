@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide, badge_reseau, statut, nom_agent %}
+{% from "_modifier.html" import formulaire_modification with context %}
+{% block titre %}Consignes{% endblock %}
+{% block sous_titre %}Retouchez un post sans le refuser, ou donnez une règle aux agents pour les prochains contenus.{% endblock %}
+{% block contenu %}
+<h2 class="section-titre">Ajouter une règle</h2>
+<form method="post" action="/lecons/ajouter" class="carte formulaire consigne-regle">
+  <div class="champ">
+    <label for="regle">La règle</label>
+    <textarea id="regle" name="regle" required rows="3" maxlength="300" placeholder="Ex. toujours finir par une question ; jamais d'emoji dans le premier mot ; citer le quartier une fois par semaine…"></textarea>
+    <p class="aide">Active tout de suite : tous les agents la lisent avant chaque tâche. Elle s'ajoute aux leçons, où vous pourrez la retirer.</p>
+  </div>
+  <fieldset class="champ">
+    <legend>Agents concernés</legend>
+    <div class="cases">
+      {% for agent in agents_regle %}<label class="case"><input type="checkbox" name="agents" value="{{ agent }}" checked><span>{{ nom_agent(agent) }}</span></label>{% endfor %}
+    </div>
+  </fieldset>
+  <button class="btn btn-primaire">{{ icone("plus") }}<span>Ajouter la règle</span></button>
+</form>
+{% if regles %}
+<div class="carte tableau">
+{% for l in regles %}
+  <div class="ligne">
+    <div class="ligne-entete">
+      <span class="meta identifiant-gauche">#{{ l.id }}</span>
+      <p class="regle-active">{{ l.regle }}</p>
+      <form method="post" action="/lecons/{{ l.id }}/retirer" class="pousser"><input type="hidden" name="retour" value="/consignes"><button class="btn btn-fantome btn-petit">Retirer</button></form>
+    </div>
+    <p class="meta">Ajoutée par vous le {{ l.cree_le|date_fr }} · {% for agent in l.agents_concernes %}{{ nom_agent(agent) }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+
+<h2 class="section-titre">Demander une modification{% if posts %} <span class="compteur">{{ posts|length }}</span>{% endif %}</h2>
+{% if not posts %}
+  {{ etat_vide("pencil-simple-line", "Aucun post à retoucher", "Les posts à valider, ou validés mais pas encore publiés, apparaîtront ici.") }}
+{% endif %}
+<div class="liste">
+{% for post in posts %}
+  {% set t = post.tache %}
+  <article class="carte revue consigne-post" id="post-{{ t.id }}" style="--i: {{ loop.index0 }}">
+    <header class="revue-entete">
+      {{ statut(t.statut) }}
+      {{ badge_reseau(t.contenu.reseau) }}
+      <span class="meta">{{ icone("calendar-blank") }}{{ t.contenu.horaire_prevu|date_fr }}</span>
+      <span class="meta identifiant">#{{ t.id }}</span>
+    </header>
+    <div class="consigne-corps">
+      {% if post.medias %}<img class="consigne-vignette" src="/media/{{ post.medias[0].id }}/vignette" alt="" loading="lazy">{% endif %}
+      <p class="extrait">{{ t.contenu.texte|truncate(280) }}</p>
+    </div>
+    <footer class="revue-actions">{{ formulaire_modification(t, "/consignes") }}</footer>
+  </article>
+{% endfor %}
+</div>
+
+{% if recentes %}
+<h2 class="section-titre">Demandes récentes</h2>
+<div class="carte tableau">
+{% for m in recentes %}
+  <div class="ligne">
+    <div class="ligne-entete">
+      <span class="meta identifiant-gauche">#{{ m.post_id }}</span>
+      <p>{{ m.consignes }}</p>
+    </div>
+    <p class="meta">{{ "Texte seulement" if m.portee == "texte" else "Visuel et texte" }} · {{ m.cree_le|date_fr }}{% if m.lecon_id %} · devenue la règle #{{ m.lecon_id }}{% endif %} · <a href="/calendrier/tache/{{ m.tache_id }}">suivre la nouvelle version</a></p>
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

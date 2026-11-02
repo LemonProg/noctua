@@ -136,6 +136,8 @@ The full guide is in [`deploy/README.md`](deploy/README.md).
 - 📤 **Publishing.** Approved posts go out on schedule through the **official Meta API**. You can also download a
   post and publish it by hand.
 - 📈 **Analytics.** Instagram statistics are collected and summarised in a weekly report that feeds the next plan.
+- ✏️ **Edit without rejecting.** Ask for a change on any post that is waiting for approval or scheduled. Choose
+  "caption only" (the visual is kept) or "visual and caption". You can also give the agents a new rule at any time.
 - 🧠 **Learning from rejections.** Each rejection is analysed and becomes a proposed lesson. A lesson applies only
   **after you approve it**.
 - 🌙 **Night production.** Heavy work runs after midnight, so your daytime quota stays free for you.

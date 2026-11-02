@@ -1,0 +1,20 @@
+{% from "_macros.html" import icone %}
+{# Demande de modification d'un post, sans le refuser : `t` = la tâche du post, `retour` = page où revenir. #}
+{% macro formulaire_modification(t, retour) -%}
+<details class="refus modif">
+  <summary class="btn btn-secondaire">{{ icone("pencil-simple-line") }}<span>Demander une modification</span></summary>
+  <form method="post" action="/taches/{{ t.id }}/modifier" class="champ">
+    <input type="hidden" name="retour" value="{{ retour }}">
+    <label for="modif-{{ t.id }}">Ce qu'il faut changer</label>
+    <textarea id="modif-{{ t.id }}" name="consignes" required rows="3" maxlength="1000" placeholder="Ex. raccourcir la 2e phrase, citer la terrasse, finir par une question…"></textarea>
+    <div class="segments" role="radiogroup" aria-label="Ce qui est refait">
+      <label class="segment"><input type="radio" name="portee" value="texte" checked><span>Texte seulement</span></label>
+      <label class="segment"><input type="radio" name="portee" value="tout"><span>Visuel et texte</span></label>
+    </div>
+    <label class="case"><input type="checkbox" name="tout_de_suite" value="oui"><span>Tout de suite (sinon cette nuit si l'horaire le permet)</span></label>
+    <label class="case"><input type="checkbox" name="en_regle" value="oui"><span>En faire aussi une règle pour les prochains contenus</span></label>
+    <p class="aide">Ce n'est pas un refus : pas d'analyse, pas de leçon. Le post actuel est remplacé par une nouvelle version, à valider{% if t.statut == "validé" %} (il ne sera pas publié d'ici là){% endif %}. « Texte seulement » garde le visuel.</p>
+    <button class="btn btn-primaire">Envoyer la demande</button>
+  </form>
+</details>
+{%- endmacro %}

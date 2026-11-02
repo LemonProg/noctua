@@ -162,6 +162,19 @@ class Corrections(Message):
     contenu_id: Identifiant
     problemes: list[Texte] = Field(min_length=1)
     origine: Literal["relecteur", "humain"] = "relecteur"
+    # Demande de modification de l'humain avec « tout de suite » : nouvelle version produite sans attendre la nuit.
+    immediat: bool = False
+
+
+class ModificationTexte(Message):
+    """Demande de modification de l'humain qui ne touche que le texte : le rédacteur retouche le texte actuel du
+    post, avec les mêmes médias et le même horaire (le visuel n'est pas refait)."""
+
+    type = "modification_texte"
+    destinataires = ("agent_redacteur",)
+
+    post_id: Identifiant
+    consignes: list[Texte] = Field(min_length=1)
 
 
 class Rapport(Message):
@@ -285,7 +298,7 @@ MESSAGES: dict[str, type[Message]] = {
     m.type: m
     for m in (
         Objectif, Cibles, BriefVisuel, BriefVideo, BriefTexte, Asset, PostBrouillon,
-        MessageBrouillon, Corrections, Rapport, Statut, ContenuRejete, Lecon, AnalyseStyle,
+        MessageBrouillon, Corrections, ModificationTexte, Rapport, Statut, ContenuRejete, Lecon, AnalyseStyle,
         DemandeVeille, DemandePlanning, RapportVeille, DemandePublication, DemandeAnalyse,
     )
 }

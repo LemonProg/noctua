@@ -38,6 +38,7 @@ from noyau.calendrier import Calendrier, ElementPublication, lundi_de
 from noyau.file import File, TacheIntrouvable, TransitionInterdite
 from noyau.horloge import Horloge, maintenant_utc
 from noyau.lecons import LeconErreur, Lecons
+from noyau.modifications import ModificationErreur, Modifications
 from noyau.notifications import Notifications
 from noyau.messages import DemandeAnalyse, MessageInvalide, valider
 from noyau.planificateur import Planificateur, lundi_suivant
@@ -59,6 +60,10 @@ RESEAUX = ("instagram", "linkedin", "facebook", "tiktok", "x")
 journal = logging.getLogger("agence.web")
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 CHEMINS_PUBLICS = ("/connexion", "/statique/", "/public/", "/manifest.webmanifest")
+# Agents à qui s'adresse une règle ajoutée par l'humain (page Consignes), et ceux d'une règle tirée d'une
+# demande de modification du texte seulement.
+AGENTS_REGLE = ("orchestrateur_marketing", "agent_redacteur", "agent_visuel", "agent_video", "agent_relecteur")
+AGENTS_REGLE_TEXTE = ["agent_redacteur", "agent_relecteur"]
 # Pages rangées dans « Réglages » (consultées de temps en temps) : le menu y reste sur « Réglages ».
 PAGES_REGLAGES = ("/direction", "/references", "/rushs", "/sons", "/corbeille", "/historique", "/echecs")
 
@@ -748,7 +753,7 @@ def creer_app(config: Config, horloge: Horloge = maintenant_utc, racine: Path = 
                       if t.type == "post_brouillon"]
             taches.sort(key=lambda t: t.maj_le, reverse=True)
             publications = Publications(s.file, s.biblio, horloge)
-            return page(request, "historique.html", s, taches=taches[:100],
+            return page(request, "historique.html", s, taches=taches[:100], modifies=modifications(s).posts_modifies(),
                         publications={t.id: publications.lire(t.id) for t in taches[:100]})
 
     # --- Corbeille ---
@@ -818,13 +823,54 @@ def creer_app(config: Config, horloge: Horloge = maintenant_utc, racine: Path = 
         return rediriger("/lecons", info=f"Leçon {lecon_id} refusée.")
 
     @app.post("/lecons/{lecon_id}/retirer")
-    def retirer_lecon(lecon_id: int):
+    def retirer_lecon(lecon_id: int, retour: str = Form("/lecons")):
+        retour = retour if retour in ("/lecons", "/consignes") else "/lecons"
         with ouvrir() as s:
             try:
                 s.lecons.retirer(lecon_id)
             except LeconErreur as erreur:
-                return rediriger("/lecons", erreur=str(erreur))
-        return rediriger("/lecons", info=f"Leçon {lecon_id} retirée : les agents ne l'appliquent plus.")
+                return rediriger(retour, erreur=str(erreur))
+        return rediriger(retour, info=f"Leçon {lecon_id} retirée : les agents ne l'appliquent plus.")
+
+    # --- Consignes : demandes de modification et règles ajoutées par l'humain ---
+
+    def modifications(s: Services) -> Modifications:
+        return Modifications(s.conn, s.file, s.biblio, s.lecons, Creneaux.depuis_config(config, s.conn, horloge),
+                             horloge)
+
+    @app.get("/consignes")
+    def consignes(request: Request):
+        with ouvrir() as s:
+            posts = [{"tache": t, "medias": medias_de(s, t)} for t in modifications(s).modifiables()]
+            regles = [l for l in s.lecons.lister("validée") if l.origine_rejet == "humain"]
+            recentes = s.conn.execute("SELECT * FROM modifications ORDER BY id DESC LIMIT 10").fetchall()
+            return page(request, "consignes.html", s, posts=posts, regles=list(reversed(regles)),
+                        recentes=recentes, agents_regle=AGENTS_REGLE)
+
+    @app.post("/lecons/ajouter")
+    def ajouter_regle(regle: str = Form(""), agents: list[str] = Form([])):
+        with ouvrir() as s:
+            try:
+                lecon = s.lecons.ajouter(regle, agents)
+            except LeconErreur as erreur:
+                return rediriger("/consignes", erreur=str(erreur))
+        return rediriger("/consignes", info=f"Règle {lecon.id} ajoutée : les agents l'appliquent dès maintenant.")
+
+    @app.post("/taches/{tache_id}/modifier")
+    def modifier_tache(tache_id: int, consignes: str = Form(""), portee: str = Form("texte"),
+                       tout_de_suite: str = Form(""), en_regle: str = Form(""), retour: str = Form("/a-valider")):
+        retour = retour if retour in ("/a-valider", "/consignes", "/calendrier") else "/a-valider"
+        with ouvrir() as s:
+            try:
+                modification = modifications(s).demander(
+                    tache_id, consignes, portee, immediat=bool(tout_de_suite), en_regle=bool(en_regle),
+                    agents_regle=AGENTS_REGLE_TEXTE if portee == "texte" else AGENTS_REGLE)
+            except (ModificationErreur, TacheIntrouvable) as erreur:
+                return rediriger(retour, erreur=str(erreur))
+            nuit = s.file.lire(modification.tache_id).creneau == "nuit"
+        quand = "cette nuit, prête demain matin" if nuit else "tout de suite"
+        regle = f" Elle devient aussi la règle {modification.lecon_id}." if modification.lecon_id else ""
+        return rediriger(retour, info=f"Modification du contenu {tache_id} demandée : nouvelle version {quand}.{regle}")
 
     @app.post("/quota/actualiser")
     def actualiser_quota(request: Request):
