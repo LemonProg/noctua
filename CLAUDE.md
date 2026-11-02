@@ -1,35 +1,35 @@
-# CLAUDE.md — Règles du projet
+# CLAUDE.md — Project rules
 
-Consignes pour Claude Code quand il travaille sur ce dépôt.
+Instructions for Claude Code when working on this repository.
 
-## Avant chaque session
+## Before each session
 
-Lis `README.md` puis `docs/architecture.md`.
+Read `README.md`, then `docs/architecture.md`.
 
-## Méthode de travail
+## Way of working
 
-- **Plan d'abord** pour tout nouveau chantier ; une étape à la fois, testée avant la suivante.
-- **Commit git** à la fin de chaque étape qui fonctionne, avec un message clair.
-- **En cas de doute, demande** plutôt que de deviner, surtout pour les API des réseaux sociaux et les coûts.
+- **Plan first** for any new piece of work; one step at a time, tested before the next.
+- **Git commit** at the end of each working step, with a clear message.
+- **When in doubt, ask** rather than guess, especially about social network APIs and costs.
 
-## Règles techniques
+## Technical rules
 
-- Le projet vise un VPS de **2 cœurs et 4 Go de RAM**. Choisis toujours la solution la plus légère. Justifie toute nouvelle dépendance.
-- **Un seul rendu (image ou vidéo) à la fois**, via la file de tâches.
-- Les rushs et contenus sont stockés sur le disque du serveur. Passe toujours par le module `stockage`, jamais par des chemins en dur.
-- **Conservation** : fichiers de travail supprimés après traitement ; contenus publiés supprimés 7 jours après publication ; rushs et contenus refusés ou « à ne pas utiliser » en corbeille, supprimés sous 24 h.
-- **Choix du modèle** : chaque tâche confiée par l'orchestrateur précise `modele` et `effort` ; la génération de contenu se fait toujours avec Opus 5.5.
-- **Claude passe par l'abonnement**, jamais par une clé API Anthropic : n'ajoute pas `ANTHROPIC_API_KEY` et retire-la de l'environnement de la commande `claude`.
-- **Secrets uniquement dans `.env`**, jamais dans le code ni dans git. Maintiens `.env.example` à jour.
-- Les identifiants des agents et des messages sont ceux de `docs/architecture.md`. Ne les renomme pas.
-- Chaque agent lit `charte.md` et `lecons.md` avant d'agir.
-- Tout contenu rejeté est analysé par `agent_erreurs` avant suppression. Les leçons n'entrent dans `lecons.md` qu'après validation humaine.
+- The project targets a VPS with **2 cores and 4 GB of RAM**. Always pick the lightest solution. Justify any new dependency.
+- **One render (image or video) at a time**, through the task queue.
+- Footage and content are stored on the server's disk. Always go through the `stockage` module, never hard-coded paths.
+- **Retention**: work files deleted after processing; published content deleted 7 days after publication; rejected or "do not use" footage and content go to the trash and are deleted within 24 h.
+- **Model choice**: every task assigned by the orchestrator sets `modele` and `effort`; content generation always uses Opus 5.5.
+- **Claude runs on the subscription**, never on an Anthropic API key: do not add `ANTHROPIC_API_KEY` and strip it from the environment of the `claude` command.
+- **Secrets only in `.env`**, never in code or git. Keep `.env.example` up to date.
+- Agent and message identifiers are those of `docs/architecture.md`. Do not rename them.
+- Every agent reads `charte.md` and `lecons.md` before acting.
+- Any rejected content is analysed by `agent_erreurs` before deletion. Lessons enter `lecons.md` only after human approval.
 
-## Ce qui est interdit
+## Forbidden
 
-- Publier via un robot navigateur (Playwright, sessions persistantes, identifiants stockés).
-- Publier ou envoyer quoi que ce soit sans validation humaine.
+- Publishing through browser automation (Playwright, persistent sessions, stored credentials).
+- Publishing or sending anything without human approval.
 
-## Langue
+## Language
 
-Documentation, interface et messages destinés à l'utilisateur en français.
+The interface, the agents' prompts and the CLI messages are in French; the documentation is in English.

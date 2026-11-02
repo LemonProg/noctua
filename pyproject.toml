@@ -1,7 +1,7 @@
 [project]
 name = "noctua"
 version = "0.1.0"
-description = "Agence marketing autonome propulsée par l'abonnement Claude, avec validation humaine obligatoire"
+description = "Autonomous marketing agency powered by a Claude subscription, with mandatory human approval"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.9",

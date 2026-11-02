@@ -1,46 +1,46 @@
-# Charte de marque
+# Brand guide
 
-Lue par tous les agents avant chaque tâche. Copiez ce fichier en `charte.md` et remplacez chaque marqueur
-[À REMPLIR] : tant qu'il en reste un, les agents refusent de démarrer.
+Read by every agent before each task. Copy this file to `charte.md` and replace every "À REMPLIR" marker in brackets
+("to fill in"): as long as one remains, the agents refuse to start.
 
-Soyez précis et factuel : les agents n'inventent rien, ils ne publient que ce qui figure ici ou dans un brief
-(offres, prix, délais, résultats).
+Be precise and factual: the agents invent nothing, they only publish what is written here or in a brief
+(offers, prices, lead times, results). Write this guide in the language your posts should be written in.
 
-## Identité
+## Identity
 
-- Nom : [À REMPLIR]
-- Activité : [À REMPLIR] (ce que vous faites, pour qui)
-- Positionnement : [À REMPLIR] (une phrase qui vous distingue)
-- Offres (prix publics, formulation exacte) : [À REMPLIR]
-- Méthode : [À REMPLIR] (comment vous travaillez avec vos clients)
-- Contact : [À REMPLIR] (adresse ou lien à citer dans les appels à l'action)
+- Name: [À REMPLIR]
+- Business: [À REMPLIR] (what you do, for whom)
+- Positioning: [À REMPLIR] (one sentence that sets you apart)
+- Offers (public prices, exact wording): [À REMPLIR]
+- Method: [À REMPLIR] (how you work with your clients)
+- Contact: [À REMPLIR] (address or link to use in calls to action)
 
-## Ton
+## Tone
 
-- Tutoiement ou vouvoiement : [À REMPLIR]
-- Registre : [À REMPLIR] (ex. proche, direct, professionnel)
-- Ce que le ton ne doit jamais être : [À REMPLIR]
+- Formal or informal address: [À REMPLIR]
+- Register: [À REMPLIR] (e.g. warm, direct, professional)
+- What the tone must never be: [À REMPLIR]
 
-## Couleurs et style visuel
+## Colours and visual style
 
-- Couleurs principales (codes hexadécimaux) : [À REMPLIR]
-- Typographie : [À REMPLIR] (déposez les fichiers .woff2 dans app/polices-marque/)
-- Style des visuels : [À REMPLIR]
-- À éviter dans les visuels : [À REMPLIR]
+- Main colours (hex codes): [À REMPLIR]
+- Typography: [À REMPLIR] (put the .woff2 files in app/polices-marque/)
+- Visual style: [À REMPLIR]
+- To avoid in visuals: [À REMPLIR]
 
-## Cibles
+## Audience
 
-- Clients visés : [À REMPLIR]
-- Zone géographique : [À REMPLIR]
+- Target customers: [À REMPLIR]
+- Area: [À REMPLIR]
 
-## Interdits
+## Forbidden
 
-- Mots et expressions interdits : [À REMPLIR]
-- Sujets interdits : [À REMPLIR]
-- Promesses ou affirmations à ne jamais faire : [À REMPLIR]
+- Banned words and phrases: [À REMPLIR]
+- Banned topics: [À REMPLIR]
+- Promises or claims never to make: [À REMPLIR]
 
-## Exemples de bons contenus
+## Examples of good content
 
-[À REMPLIR] : collez deux ou trois de vos meilleurs posts (texte complet), chacun dans une citation.
+[À REMPLIR]: paste two or three of your best posts (full text), each as a quote.
 
-> Exemple de post…
+> Example post…

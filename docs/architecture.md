@@ -1,173 +1,133 @@
-# Architecture des agents
+# Agent architecture
 
-## Principe
+> Agent and message identifiers are kept in French, exactly as they appear in the code.
 
-Une agence **marketing** (contenu organique pour Instagram) tourne sur un petit VPS : une équipe d'agents Claude produit, un humain valide.
+## Principle
 
-Chaque flèche du schéma est un **message typé** écrit dans la **file de tâches partagée** et adressé à un agent. Les agents ne s'appellent pas directement : ils lisent leurs tâches dans la file et y écrivent leurs résultats.
+A **marketing** agency (organic content for Instagram) runs on a small VPS: a team of Claude agents produces, a human approves.
 
-## Schéma
+Every exchange is a **typed message** written to a **shared task queue** and addressed to one agent. Agents never call each other directly: they read their tasks from the queue and write their results back to it.
 
-```mermaid
-flowchart TB
-    human(["HUMAIN validateur · sa seule action : valider ou refuser · peut proposer un brief · seul à autoriser la publication"])
-    rules["Règles : un agent = une tâche · tous lisent charte.md et lecons.md avant d'agir · rien ne sort sans validation humaine · un seul rendu vidéo à la fois · les échanges passent par la file de tâches"]
-    queue[("File de tâches partagée · statuts : à faire, en cours, à valider, validé, refusé, terminé, échec")]
-    charte[("charte.md · ton, couleurs, cibles, interdits, exemples")]
-    lecons[("lecons.md · leçons validées par l'humain, tirées des contenus rejetés")]
-    rushs[("Bibliothèque rushs · photos et vidéos fournies par l'humain")]
+## Flow
 
-    subgraph mktIA ["Agence marketing"]
-        orchM(["orchestrateur_marketing (Opus 5.5) · autonome, chaque semaine : calendrier de 4 posts, briefs, mélange de formats, rotation des rushs · ajuste selon veille, rapport et leçons"])
-        veille["agent_veille (Opus 5.5 + recherche web + API Instagram) · identifie les concurrents, analyse leur communication · sortie : rapport_veille"]
-        visuel["agent_visuel (graphiste : Claude + rendu HTML) · entrée : brief_visuel, direction artistique, références, rushs · sortie : image ou carrousel"]
-        videoA["agent_video (Opus 5.5 + HyperFrames) · entrée : brief_video + rushs · sortie : MP4 + script"]
-        redac["agent_redacteur · entrée : brief_texte + assets · sortie : post complet (texte, média, horaire)"]
-        analyste["agent_analyste · entrée : stats publiées · sortie : rapport hebdo"]
-    end
-
-
-    relect["agent_relecteur · vérifie charte, fautes, faits · sortie : OK ou corrections"]
-    erreurs["agent_erreurs · analyse chaque contenu rejeté · sortie : leçon proposée"]
-    out(["Publication"])
-    pub["agent_publication · publie à l'horaire prévu les seuls posts validés, via l'API officielle de Meta"]
-
-    human -.->|"objectif ou brief (facultatif)"| orchM
-    veille -->|"rapport_veille"| orchM
-    orchM -->|"brief_visuel"| visuel
-    orchM -->|"brief_video"| videoA
-    orchM -->|"brief_texte"| redac
-    rushs --> visuel
-    rushs --> videoA
-    visuel -->|"asset image"| redac
-    videoA -->|"asset vidéo"| redac
-    redac -->|"post_brouillon"| relect
-
-
-    charte -.->|"référence"| relect
-    relect -.->|"corrections"| orchM
-    relect -->|"à valider"| queue
-    queue -->|"file de validation"| human
-    human -->|"validé"| pub
-    pub -->|"demande_publication"| out
-    out -.->|"stats"| analyste
-    analyste -->|"rapport"| orchM
-    relect -.->|"contenu_rejete"| erreurs
-    human -.->|"contenu_rejete"| erreurs
-    erreurs -->|"lecon (à valider)"| queue
-    human -.->|"leçon validée"| lecons
-    lecons -.->|"référence"| relect
-    rules --- queue
+```text
+planner (Sunday) ──► agent_analyste ──► report ───────────────┐
+                 ──► agent_veille ────► market report ────────┤
+                                                              ▼
+                                               orchestrateur_marketing
+                                    ┌──────────────┼──────────────┐
+                               brief_visuel    brief_video    brief_texte
+                                    ▼              ▼              │
+                              agent_visuel    agent_video         │
+                                    └──── asset ───┴──────────────┤
+                                                                  ▼
+                                                          agent_redacteur
+                                                                  ▼
+                                                  agent_relecteur ──► corrections ──► orchestrator
+                                                                  ▼
+                                                     human approval queue
+                                              approved ▼                ▼ rejected
+                                          agent_publication       agent_erreurs ──► lesson (to approve)
+                                                  ▼
+                                              Instagram ──► statistics ──► agent_analyste
 ```
 
 ## Agents
 
-| ID | Agence | Modèle / outil | Reçoit | Produit |
-|---|---|---|---|---|
-| `orchestrateur_marketing` | Marketing | Opus 5.5 | déclenchement hebdomadaire, rapport_veille, rapport (analyste), corrections (relecteur), objectif ou brief facultatif (humain) | calendrier éditorial, brief_visuel, brief_video, brief_texte |
-| `agent_veille` | Marketing | Opus 5.5 + recherche web + API Instagram | déclenchement périodique | rapport_veille |
-| `agent_visuel` | Marketing | Opus 5.5 + rendu Chromium | brief_visuel + rushs + charte + direction artistique + références ; analyse_style | asset (image ou carrousel) + HTML utilisé ; direction artistique proposée |
-| `agent_video` | Marketing | Opus 5.5 + HyperFrames | brief_video + rushs + charte | asset vidéo (MP4) + script |
-| `agent_redacteur` | Marketing | Opus 5.5 | brief_texte + assets + charte | post_brouillon (texte, média, réseau, horaire) |
-| `agent_analyste` | Marketing | Sonnet 5.5 (effort moyen par défaut) | demande_analyse (dimanche 19 h) + statistiques des posts (saisies, import Meta Business Suite, puis API) | rapport hebdo, lu par l'orchestrateur au planning |
-| `agent_relecteur` | Marketing | Sonnet 5.5 (effort moyen par défaut) | post_brouillon + charte | « à valider » ou corrections |
-| `agent_erreurs` | Marketing | Opus 5.5 | contenu_rejete + charte + lecons.md | lecon (proposée, à valider par l'humain) |
-| `agent_publication` | Marketing | aucun modèle (API officielle de Meta) | demande_publication (post validé dont l'horaire est arrivé) | post publié sur Instagram, date et lien de publication |
+| ID | Model / tool | Receives | Produces |
+|---|---|---|---|
+| `orchestrateur_marketing` | Opus 5.5 | weekly trigger, market report, analyst report, reviewer corrections, optional human brief | editorial calendar, `brief_visuel`, `brief_video`, `brief_texte` (each with model and effort) |
+| `agent_veille` | Opus 5.5 + web search | weekly trigger | market report: competitors, formats and angles that work, cadence, recommendations, sources |
+| `agent_visuel` | Opus 5.5 + headless Chromium | visual brief + footage + brand guide + art direction + style references; style analysis | asset (image or carousel) + the HTML used; proposed art direction |
+| `agent_video` | Opus 5.5 + HyperFrames | video brief + footage + brand guide | video asset (MP4) + script |
+| `agent_redacteur` | Opus 5.5 | text brief + assets + brand guide | draft post (caption, media, network, schedule) |
+| `agent_relecteur` | Sonnet 5.5 (medium effort by default) | draft post + brand guide | "to approve", or corrections |
+| `agent_erreurs` | Sonnet 5.5 | rejected content + brand guide + lessons | proposed lesson (approved by the human) |
+| `agent_analyste` | Sonnet 5.5 (medium effort by default) | analysis request (Sunday 7 pm) + post statistics (manual, Meta Business Suite import, then API) | weekly report, read by the orchestrator when planning |
+| `agent_publication` | no model (official Meta API) | publication request (approved post whose time has come) | post published on Instagram, with date and link |
 
+## Messages
 
-## Messages (proposition, à ajuster)
-
-| Message | De → Vers | Contenu minimal |
+| Message | From → To | Minimum content |
 |---|---|---|
-| `objectif` | humain → orchestrateur_marketing (facultatif) | but, période, réseaux |
-| `demande_veille` | planificateur → agent_veille | période ; modèle et effort |
-| `demande_planning` | planificateur ou humain → orchestrateur_marketing | semaine visée, nombre de posts ; modèle et effort |
-| `rapport_veille` | agent_veille → orchestrateur_marketing | période, concurrents identifiés, formats et thèmes qui marchent, cadences observées, recommandations, sources |
-| `brief_visuel` / `brief_video` / `brief_texte` | orchestrateur → agent | id, objectif, format, réseau, rushs à utiliser, date prévue |
-| `asset` | agent visuel / vidéo → rédacteur | id du brief, type, fichier(s) (une image ou les slides d'un carrousel), prompt ou script |
-| `analyse_style` | humain → agent_visuel | références de style à analyser ; produit une direction artistique à valider |
-| `post_brouillon` | rédacteur → relecteur | texte, médias, réseau, horaire prévu |
-| `corrections` | relecteur → orchestrateur | id, liste des problèmes |
-| `rapport` | analyste → orchestrateur | période, chiffres clés, recommandations, synthèse, ce qui marche, ce qui ne marche pas (enregistré, lu par l'orchestrateur au planning) |
-| `contenu_rejete` | relecteur / humain → agent_erreurs | id du contenu, origine du rejet (refus humain, « ne pas utiliser », corrections du relecteur), contenu, brief, commentaire ou corrections |
-| `demande_analyse` | planificateur ou humain → agent_analyste | semaine visée, forcer (analyser même sans nouvelle statistique) ; modèle et effort |
-| `demande_publication` | worker → agent_publication | id du post validé (créée quand son horaire prévu arrive, entre 8 h et 22 h) |
-| `lecon` | agent_erreurs → humain (file de validation) | id du contenu, erreur identifiée, cause probable, règle à appliquer, agents concernés |
+| `objectif` | human → orchestrator (optional) | goal, period, networks |
+| `demande_veille` | planner → agent_veille | period; model and effort |
+| `demande_planning` | planner or human → orchestrator | target week, number of posts; model and effort |
+| `rapport_veille` | agent_veille → orchestrator | period, competitors, formats and topics that work, observed cadence, recommendations, sources |
+| `brief_visuel` / `brief_video` / `brief_texte` | orchestrator → agent | id, goal, format, network, footage to use, planned date |
+| `asset` | visual / video agent → writer | brief id, type, file(s) (one image or carousel slides), prompt or script |
+| `analyse_style` | human → agent_visuel | style references to analyse; produces an art direction to approve |
+| `post_brouillon` | writer → reviewer | caption, media, network, planned time |
+| `corrections` | reviewer → orchestrator | id, list of issues |
+| `rapport` | analyst → orchestrator | period, key figures, recommendations, summary, what works, what doesn't |
+| `contenu_rejete` | reviewer / human → agent_erreurs | content id, rejection origin (human refusal, "do not use", reviewer corrections), content, brief, comment or corrections |
+| `demande_analyse` | planner or human → agent_analyste | target week, force (analyse even without new statistics); model and effort |
+| `demande_publication` | worker → agent_publication | id of the approved post (created when its time comes, between 8 am and 10 pm) |
+| `lecon` | agent_erreurs → human (approval queue) | content id, identified error, probable cause, rule to apply, agents concerned |
 
-## Autonomie de l'agence marketing
+## Task statuses
 
-- L'humain n'a qu'une action : valider ou refuser. Il peut aussi proposer un brief, sans que ce soit nécessaire.
-- `agent_veille` tourne régulièrement : il identifie lui-même les principaux concurrents (recherche web, API officielle de Meta pour les comptes Instagram professionnels publics) et analyse leur stratégie de communication. Il s'inspire des formats, thèmes, angles et cadences, sans jamais copier un texte ou un visuel.
-- `orchestrateur_marketing` est déclenché chaque semaine : il construit le calendrier (cible : 4 posts par semaine) à partir du rapport de veille, du rapport de l'analyste et des leçons, puis émet les briefs.
-- Mélange de formats : rushs, visuels créés (explicatifs sur fond uni, carrousels), texte seul. Les rushs tournent : l'orchestrateur suit leur utilisation pour éviter les répétitions.
+`à_faire` (to do) → `en_cours` (in progress) → `à_valider` (to approve) → `validé` (approved) or `refusé` (rejected)
 
-## Statuts de la file de tâches
+Two technical statuses complete the cycle:
 
-`à_faire` → `en_cours` → `à_valider` → `validé` ou `refusé`
+- `terminé` (done): intermediate task that needs no human approval (e.g. a brief turned into an asset).
+- `échec` (failed): task in error after 3 attempts, with its last error. Visible in the interface; can be retried by hand.
 
-Deux statuts techniques complètent ce circuit :
+Rules:
 
-- `terminé` : tâche intermédiaire traitée qui ne demande pas de validation humaine (ex. un brief transformé en asset). `en_cours` → `terminé`.
-- `échec` : tâche en erreur après 3 tentatives, avec sa dernière erreur. `en_cours` → `échec`. Visible dans l'interface ; peut être relancée à la main (`échec` → `à_faire`).
-
-- Un contenu refusé par le relecteur repart vers l'orchestrateur avec ses corrections, avant d'arriver dans la file de validation.
-- Un contenu refusé par l'humain repart vers l'orchestrateur avec le commentaire.
-- Tout contenu rejeté (refus humain, marqué « à ne pas utiliser », ou corrigé par le relecteur) donne aussi un message `contenu_rejete` vers `agent_erreurs`. La leçon proposée passe par la file de validation ; seules les leçons validées par l'humain entrent dans `lecons.md`.
-- Un contenu en corbeille n'est supprimé qu'une fois son analyse terminée. Si l'analyse n'est pas finie au bout de 24 h, le délai est prolongé tant que l'espace disque le permet. Si le disque passe sous le seuil d'alerte, l'interface prévient l'humain, qui choisit : supprimer sans analyse ou libérer de la place.
+- Content rejected by the reviewer goes back to the orchestrator with its corrections before reaching the approval queue.
+- Content rejected by the human goes back to the orchestrator with the comment.
+- Any rejected content also produces a `contenu_rejete` message for `agent_erreurs`. The proposed lesson goes through the approval queue; only lessons approved by the human enter `lecons.md`.
+- Trashed content is deleted only once its analysis is finished. If the analysis is not done after 24 h, the delay is extended as long as disk space allows. If the disk drops below the alert threshold, the interface warns the human, who chooses: delete without analysis or free up space.
 
 ## Publication
 
-- Seul un post au statut `validé` peut être publié, une seule fois : la publication est notée en base juste avant l'appel irréversible à Meta. Valider un post vaut autorisation de le publier à son horaire prévu (modifiable au moment de valider, comme l'étiquette « créé avec l'IA »).
-- Publication automatique activée par `PUBLICATION_AUTOMATIQUE` ; sinon, ou en cas d'échec, le post se télécharge depuis le calendrier et se publie à la main (« Marquer comme posté »).
-- Aucun robot navigateur : uniquement l'API officielle de Meta. Les images sont exposées le temps que Meta les récupère, à une adresse publique au nom aléatoire, puis supprimées.
+- Only a post with status `validé` can be published, and only once: publication is recorded in the database right before the irreversible call to Meta. Approving a post authorises its publication at its planned time (editable when approving, like the "made with AI" label).
+- Automatic publication is enabled by `PUBLICATION_AUTOMATIQUE`; otherwise, or on failure, the post is downloaded from the calendar and published by hand ("Mark as posted").
+- No browser automation: only Meta's official API. Images are exposed while Meta fetches them, at a public URL with a random name, then deleted.
 
-## Modèles
+## Models
 
-- Les agents « Opus 5.5 » appellent Claude via l'abonnement Claude de l'humain : la commande `claude -p` (Claude Code en mode non interactif), authentifiée par `CLAUDE_CODE_OAUTH_TOKEN`, sans outils, avec une réponse JSON imposée. Pas de clé API Anthropic.
-- `agent_video` est un motion designer : Claude écrit le reel en HTML/CSS/GSAP, rendu par HyperFrames (un rendu à la fois). Bruitages : de vrais enregistrements CC0 de la banque (trouvés sur Openverse, licence revérifiée sur Freesound, triés à l'écoute par l'humain), dont la frappe est calée sur l'image ; en secours, 2 sons au plus synthétisés en Web Audio. Après le rendu, le niveau sonore est réglé par un gain linéaire (-16 LUFS visés, crête -1,5 dBTP, réglables), sans réencoder l'image. Ni voix ni musique.
-- `agent_visuel` est un graphiste : Claude écrit chaque visuel (image ou slides de carrousel) en HTML/CSS, selon la direction artistique validée et les références de style ; Chromium sans fenêtre le transforme en PNG (sans accès réseau, un rendu à la fois) ; Claude regarde le rendu et le corrige avant de le soumettre. Les photos des rushs sont placées telles quelles (recadrage, réglages simples), jamais redessinées. Aucune API d'images payante.
+- Agents call Claude through the human's **Claude subscription**: the `claude -p` command (Claude Code, non-interactive), authenticated with `CLAUDE_CODE_OAUTH_TOKEN`, without tools, with an enforced JSON response. No Anthropic API key.
+- `agent_video` is a motion designer: Claude writes the reel in HTML/CSS/GSAP, rendered by HyperFrames (one render at a time). Sound effects: real CC0 recordings from the sound bank (found on Openverse, licence re-checked on Freesound, sorted by ear by the human), with their hit point synced to the picture; as a fallback, at most 2 sounds synthesised with Web Audio. After rendering, loudness is set with a linear gain (-16 LUFS target, -1.5 dBTP peak, configurable), without re-encoding the picture. No voice, no music.
+- `agent_visuel` is a graphic designer: Claude writes each visual (image or carousel slides) in HTML/CSS, following the approved art direction and style references; headless Chromium turns it into a PNG (no network access, one render at a time); Claude looks at the render and fixes it before submitting. Photos from the footage library are placed as-is (cropping, simple adjustments), never redrawn. No paid image API.
 
-## Choix du modèle et de l'effort
+## Choosing model and effort
 
-Tout passe par l'abonnement Claude : son quota (fenêtres de 5 heures et de 7 jours) est la ressource à ménager.
+Everything runs on the Claude subscription: its quota (5-hour and 7-day windows) is the resource to spare.
 
-- Chaque message adressé à un agent peut porter `modele` (claude-haiku-5-5, claude-sonnet-5-5, claude-opus-5-5) et `effort` (low à max). **L'orchestrateur les précise toujours** : il analyse chaque tâche qu'il confie pour choisir le modèle le plus adapté et l'effort.
-- **La génération de contenu se fait toujours avec claude-opus-5-5** (brief_texte, brief_visuel, brief_video, asset) : tout autre modèle est refusé à la validation du message.
-- Sans précision, chaque agent applique ses valeurs par défaut : rédacteur Opus 5.5 effort medium ; graphiste Opus 5.5 effort high (relecture medium) ; analyse de style Opus 5.5 high ; analyse des rejets Sonnet 5.5 medium.
-- Repères pour l'orchestrateur :
+- Each message to an agent can carry `modele` (claude-haiku-5-5, claude-sonnet-5-5, claude-opus-5-5) and `effort` (low to max). **The orchestrator always sets them**, choosing the most suitable model and effort for each task.
+- **Content generation always uses claude-opus-5-5** (`brief_texte`, `brief_visuel`, `brief_video`, `asset`): any other model is refused when the message is validated.
+- Defaults when nothing is set: writer Opus 5.5 medium; designer Opus 5.5 high (review medium); style analysis Opus 5.5 high; rejection analysis Sonnet 5.5 medium.
+- Guidelines for the orchestrator:
+  - claude-haiku-5-5: simple, short tasks (sorting, classification, extraction, mechanical checks).
+  - claude-sonnet-5-5: medium-difficulty internal analysis and writing (rejection analysis, review, statistics summary, routine market watch).
+  - claude-opus-5-5: complex or high-stakes tasks (strategy, art direction) and, always, any content generation.
+  - Effort: low for mechanical work, medium by default, high for creation and hard reasoning; xhigh and max only when quality truly requires it.
+- Above `QUOTA_SEUIL_POURCENT` (90 % by default) on a window, the agency pauses until the reset. At night, the 5-hour window may be used up to 100 % (it ends before the human wakes up); the weekly threshold still applies.
 
-- claude-haiku-5-5 : tâches simples et courtes (tri, classement, extraction, vérification mécanique).
-- claude-sonnet-5-5 : analyse et rédaction internes de difficulté moyenne (analyse d'un rejet, relecture,
-  synthèse de statistiques, veille courante).
-- claude-opus-5-5 : tâches complexes ou à fort enjeu (stratégie, direction artistique) et, obligatoirement,
-  toute génération de contenu (textes, visuels, vidéos).
-- Effort : low pour le mécanique, medium par défaut, high pour la création et le raisonnement difficile ;
-  xhigh et max seulement si la qualité l'exige vraiment.
+## Night production
 
-- Au-delà de `QUOTA_SEUIL_POURCENT` (90 % par défaut) sur une fenêtre, l'agence se met en pause jusqu'à la remise à zéro. La nuit, la fenêtre de 5 heures peut être utilisée jusqu'à 100 % (elle se termine avant le réveil de l'humain) ; le seuil de la semaine reste.
+Heavy tasks (market watch, planning, visuals, writing, review, style analysis) run at night, when the subscription is not used by the human (`noyau/creneaux.py`).
 
-## Production de nuit
+- Each task has a slot: `jour` (any time), `nuit` (production that can wait for the night), `nuit_suite` (continuation of a night chain: caption, review, correction of a post produced at night).
+- **Window rule**: from `NUIT_DEBUT` (midnight) to `ABONNEMENT_LIBRE_MAX` (9 am), a call is started only if the 5-hour window containing it ends before `ABONNEMENT_LIBRE` (8 am) for new production, before 9 am for the continuation of a started chain. During the day, only `jour` tasks run.
+- **Decision**: the orchestrator assigns a brief to the night if the post will be ready in the morning and leaves `MARGE_VALIDATION_HEURES` (2 h) for approval before publication; otherwise it starts right away.
+- **Re-evaluation** every minute: a night task that could no longer wait for the next night without missing its publication moves to the day.
+- Sunday evening's market watch and planning wait for the night; the statistics analysis stays at 7 pm.
 
-Les tâches gourmandes (veille, planning, visuels, rédaction, relecture, analyse de style) tournent la nuit, quand l'abonnement ne sert pas à l'humain (`noyau/creneaux.py`).
+## Shared resources
 
-- Chaque tâche a un créneau : `jour` (à tout moment), `nuit` (production qui peut attendre la nuit), `nuit_suite` (suite d'une chaîne de nuit : texte, relecture, correction d'un post produit la nuit).
-- **Règle de la fenêtre** : de `NUIT_DEBUT` (minuit) à `ABONNEMENT_LIBRE_MAX` (9 h), un appel n'est lancé que si la fenêtre de 5 heures qui le contient se termine avant `ABONNEMENT_LIBRE` (8 h) pour une nouvelle production, avant 9 h pour la suite d'une chaîne commencée. Elle vaut pour toutes les tâches, y compris la mesure du quota. Le jour, seules les tâches `jour` tournent.
-- **Décision** : l'orchestrateur confie un brief à la nuit si le post sera prêt au matin et laisse `MARGE_VALIDATION_HEURES` (2 h) de validation avant sa publication ; sinon il part tout de suite. Même règle pour une nouvelle version après un refus humain et pour un brief manuel (case « Produire tout de suite »). Une correction du relecteur reste dans le créneau de sa chaîne.
-- **Réévaluation** chaque minute : une tâche de nuit qui ne pourrait plus attendre la nuit suivante sans rater sa publication passe en journée.
-- La veille et le planning du dimanche soir attendent la nuit ; l'analyse des statistiques reste à 19 h.
-- Gain : la fenêtre de 5 heures de la journée reste à l'humain. La limite de la semaine n'est pas économisée.
+- `charte.md`: brand guide — tone, colours, audience, banned words, examples of good content. Read by every agent.
+- `lecons.md`: lessons drawn from rejected content, approved by the human. Read by every agent.
+- Footage library: on the server's disk, accessed only through the `stockage` module (ready for S3). Trash for rejected or "do not use" items (deleted within 24 h); published content deleted 7 days after publication.
+- Task queue: the single point of exchange.
 
-## Ressources partagées
+## Global rules
 
-- `charte.md` : ton, couleurs, cibles, mots interdits, exemples de bons contenus. Lue par tous les agents.
-- `lecons.md` : leçons tirées des contenus rejetés, validées par l'humain. Lue par tous les agents, comme la charte.
-- Bibliothèque de rushs : sur le disque du VPS pour l'instant (un stockage S3 viendra plus tard), accessible uniquement via le module `stockage`. Corbeille pour les rushs et contenus refusés ou marqués « à ne pas utiliser » (suppression sous 24 h) ; contenus publiés supprimés 7 jours après publication.
-- File de tâches : point de passage unique de tous les échanges.
-
-## Règles globales
-
-1. Un agent = une tâche.
-2. Tous les agents lisent `charte.md` et `lecons.md` avant d'agir.
-3. Rien n'est publié sans validation humaine.
-4. Un seul rendu vidéo à la fois sur le VPS.
-5. Tous les échanges passent par la file de tâches.
+1. One agent = one task.
+2. Every agent reads `charte.md` and `lecons.md` before acting.
+3. Nothing is published without human approval.
+4. One render at a time on the VPS.
+5. All exchanges go through the task queue.
