@@ -74,8 +74,11 @@ cp charte.exemple.md charte.md
                          # CLAUDE_CODE_OAUTH_TOKEN=...
    ```
 
-3. **Fill in `charte.md`**, your brand guide. Replace every `[À REMPLIR]` marker. The agents refuse to start while
-   any marker remains.
+3. **Fill in `charte.md`**, your brand guide. The agents refuse to start while any `[À REMPLIR]` marker remains.
+   - **Automatically:** give Claude Code [this prompt](prompts/brand-guide-from-website.md) with your website's URL.
+     It writes the guide (identity, offers, tone, colours, fonts, visual style) and saves images for the art
+     direction.
+   - **By hand:** replace every marker yourself.
 
 ### Run
 
@@ -247,7 +250,8 @@ Without Instagram, the agency still works: you download each approved post from 
 ## Make it your brand
 
 - **`charte.md`**: identity, offers, tone, colours, audience, banned words and example posts. The agents use nothing
-  that is not written here or in a brief.
+  that is not written here or in a brief. You can
+  [generate it from your website](prompts/brand-guide-from-website.md) in a few minutes.
 - **Style references** (Réglages > Références): upload visuals you like. The visual agent turns them into an
   **art direction** that you approve.
 - **Fonts**: `.woff2` files in `app/polices-marque/`. This folder is not versioned, because many font licences
@@ -281,6 +285,7 @@ noyau/      core: Claude calls, task queue, worker, scheduler, night slots, quot
 app/        web interface (FastAPI + Jinja + HTMX, no JS build)
 video/      HyperFrames + GSAP (pinned versions)
 deploy/     VPS installer, systemd units, Caddy, checks, backups
+prompts/    ready-to-use prompts (brand guide from your website)
 docs/       architecture of agents and messages
 ```
 

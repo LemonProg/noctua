@@ -27,6 +27,7 @@ rsync -az --delete \
     --exclude="direction_artistique.md" \
     --exclude=".env" \
     --exclude="references/" \
+    --exclude="references-site/" \
     --exclude="donnees/" \
     --exclude="tmp/" \
     --exclude="lecons.md" \

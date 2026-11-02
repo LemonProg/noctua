@@ -1,8 +1,11 @@
 # Secrets
 .env
 
-# Your brand guide (copied from charte.exemple.md)
+# Your brand: guide, logo, images taken from your website
 charte.md
+app/marque/*
+!app/marque/README.md
+references-site/
 
 # Local data (database, content, temporary files)
 *.sqlite3
