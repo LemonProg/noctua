@@ -3,7 +3,9 @@
 Une publication = un brief racine (créé par le planning ou par l'humain) et toute sa lignée de tâches :
 visuel, post, relecture, corrections, nouveau brief, analyse du rejet, leçon… Son état est celui du
 dernier post de la lignée. Une publication refusée sans nouvelle version (écartée ou abandonnée)
-n'apparaît pas : un refus avec commentaire relance une version, qui prend sa place. Les autres tâches (veille, planning, analyse de style…) sont placées le jour
+n'apparaît pas : un refus avec commentaire relance une version, qui prend sa place. Une publication est placée
+à son horaire prévu, ou, une fois publiée, au moment où elle est vraiment sortie (date relevée sur Instagram,
+sinon date notée à la publication) : un post publié en avance ne reste pas sur sa semaine d'origine. Les autres tâches (veille, planning, analyse de style…) sont placées le jour
 où elles ont été créées ; la veille et le planning du dimanche apparaissent à l'avance comme « prévus ».
 """
 
@@ -80,6 +82,9 @@ class Calendrier:
         self.file = file
         self.publications = publications
         self._taches = {t.id: t for t in file.lister()}
+        # Date réelle de sortie sur Instagram des posts de l'agence, relevée avec les statistiques.
+        self._sortis = {l["post_id"]: l["publie_le"] for l in file.conn.execute(
+            "SELECT post_id, publie_le FROM statistiques WHERE post_id IS NOT NULL AND publie_le IS NOT NULL")}
         self._enfants: dict[int, list[Tache]] = {}
         for tache in self._taches.values():
             if tache.parent_id:
@@ -106,7 +111,10 @@ class Calendrier:
         post = posts[-1] if posts else None
         publication = self.publications.lire(post.id) if post else None
         dernier_brief = [t for t in lignee if t.type in BRIEFS][-1]
-        quand = post.contenu["horaire_prevu"] if post else dernier_brief.contenu["date_prevue"]
+        if publication:
+            quand = self._sortis.get(post.id) or publication.publie_le
+        else:
+            quand = post.contenu["horaire_prevu"] if post else dernier_brief.contenu["date_prevue"]
         return ElementPublication(racine, lignee, post, publication, etat_publication(lignee, post, publication),
                                   datetime.fromisoformat(quand).astimezone(FUSEAU))
 
