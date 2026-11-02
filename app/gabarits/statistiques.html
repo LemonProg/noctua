@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% from "_lecture.html" import puces, synthese %}
+{% block titre %}Statistiques{% endblock %}
+{% block largeur %}large{% endblock %}
+{% set COURTS = {"vues": "Vues", "couverture": "Couverture", "jaime": "J'aime", "commentaires": "Comm.", "partages": "Partages",
+  "enregistrements": "Enreg.", "abonnes": "Abonnés"} %}
+{% block sous_titre %}Les résultats des posts Instagram et le rapport de l'analyste, lu par l'orchestrateur chaque dimanche.{% endblock %}
+{% block actions %}<form method="post" action="/statistiques/analyser"><button class="btn btn-secondaire"{% if not lignes %} disabled{% endif %}>{{ icone("sparkle") }}<span>Analyser maintenant</span></button></form>{% endblock %}
+{% block contenu %}
+{% if en_cours %}<div class="alerte-bloc alerte-info">{{ icone("info") }}<span>{% if en_cours|de_nuit %}Analyse prévue cette nuit : le rapport sera là demain matin.{% else %}Analyse en cours : rechargez la page dans une minute.{% endif %}</span></div>{% endif %}
+
+<div class="stats-haut">
+  <section class="carte stats-rapport">
+    <header class="stats-entete">
+      <h2>{{ icone("sparkle") }}Rapport de l'analyste</h2>
+      {% if rapport %}<span class="meta">{{ rapport_le|date_fr }} · posts du {{ rapport.periode.debut|jour_fr }} au {{ rapport.periode.fin|jour_fr }}</span>{% endif %}
+    </header>
+    {% if rapport %}
+      {% if rapport.synthese %}{{ synthese(rapport.synthese) }}{% endif %}
+      <dl class="stats-cles">
+        {% for nom, valeur in rapport.chiffres_cles.items() %}<div><dt>{{ nom }}</dt><dd>{{ valeur }}</dd></div>{% endfor %}
+      </dl>
+      <div class="stats-colonnes">
+        {% if rapport.ce_qui_marche %}<div><h3>Ce qui marche</h3>{{ puces(rapport.ce_qui_marche) }}</div>{% endif %}
+        {% if rapport.ce_qui_ne_marche_pas %}<div><h3>Ce qui marche moins</h3>{{ puces(rapport.ce_qui_ne_marche_pas) }}</div>{% endif %}
+      </div>
+      <h3>Recommandations pour la semaine</h3>
+      {{ puces(rapport.recommandations, "numerotees") }}
+    {% else %}
+      <p class="aide">Pas encore de rapport. L'analyste tourne chaque dimanche à 19 h dès qu'il y a de nouvelles statistiques, ou maintenant avec « Analyser maintenant ».</p>
+    {% endif %}
+  </section>
+
+  <section class="carte stats-import">
+    <h2>{{ icone("arrow-counter-clockwise") }}Relevé Instagram</h2>
+    {% if api %}
+      <p class="aide">Relevé automatique toutes les 12 h par l'API de Meta{% if releve_api %} ; dernier : {{ releve_api|date_fr }}{% endif %}.</p>
+      <form method="post" action="/statistiques/relever" class="stats-import-form">
+        <button class="btn btn-secondaire">{{ icone("arrow-counter-clockwise") }}<span>Relever maintenant</span></button>
+      </form>
+    {% else %}
+      <p class="aide">Relevé automatique désactivé : jeton Instagram non réglé dans .env.</p>
+    {% endif %}
+    {% if api %}<details class="suite stats-secours"><summary>Import manuel (secours)</summary>{% else %}<h2 class="stats-sous-titre">{{ icone("upload-simple") }}Importer depuis Meta</h2>{% endif %}
+    <p class="aide">Meta Business Suite → Statistiques → Contenu → Exporter les données (fichier CSV des publications). Un nouvel import met les chiffres à jour.</p>
+    <form method="post" action="/statistiques/importer" enctype="multipart/form-data" class="stats-import-form" hx-boost="false">
+      <input type="file" name="fichier" accept=".csv,text/csv" required>
+      <button class="btn btn-primaire">{{ icone("upload-simple") }}<span>Importer</span></button>
+    </form>
+    {% if api %}</details>{% endif %}
+  </section>
+</div>
+
+{% if not lignes %}
+  {{ etat_vide("chart-bar", "Aucune statistique", "Importez l'export de Meta Business Suite, ou saisissez les chiffres d'un post publié depuis le calendrier.") }}
+{% else %}
+<div class="carte tableau stats-liste">
+  <div class="stats-ligne stats-titres">
+    <span>Post</span>{% for c in chiffres %}<span title="{{ libelles[c] }}">{{ COURTS[c] }}</span>{% endfor %}<span title="Interactions rapportées à la couverture">Engag.</span>
+  </div>
+  {% for l in lignes %}
+  <div class="stats-ligne">
+    <div class="stats-post">
+      <div class="ligne-entete">
+        <span class="meta">{{ l.publie_le|date_fr }}</span>
+        {% if l.type %}<span class="badge">{{ {"image": "Image", "carrousel": "Carrousel", "reel": "Reel"}.get(l.type, l.type) }}</span>{% endif %}
+        {% if l.post_id %}<a href="/calendrier/tache/{{ l.post_id }}" class="badge badge-ia">{{ icone("sparkle") }}Agence</a>{% endif %}
+        {% if l.lien|lien_sur %}<a href="{{ l.lien|lien_sur }}" target="_blank" rel="noopener" hx-boost="false" class="meta">Voir</a>{% endif %}
+      </div>
+      <p class="extrait">{{ l.description }}</p>
+    </div>
+    {% for c in chiffres %}<span class="chiffre" data-libelle="{{ libelles[c] }}">{{ "{:,}".format(l[c]).replace(",", " ") if l[c] is not none else "–" }}</span>{% endfor %}
+    {% set e = engagement(l) %}
+    <span class="chiffre fort" data-libelle="Engagement">{{ "%.1f"|format(e) ~ " %" if e is not none else "–" }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

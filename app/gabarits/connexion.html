@@ -1,0 +1,34 @@
+{% from "_macros.html" import icone %}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Connexion · {{ nom_agence }}</title>
+  <link rel="stylesheet" href="/statique/style.css?v={{ version_statique }}">
+{% include "_tete_app.html" %}
+</head>
+<body class="page-connexion">
+{% include "_icones.html" %}
+  <section class="connexion-marque">
+    <span class="logo logo-grand">{{ initiale }}</span>
+    <div>
+      <p class="connexion-titre">{{ nom_agence }}</p>
+      <p class="connexion-texte">Votre agence marketing et prospection. Rien ne sort sans votre validation.</p>
+    </div>
+  </section>
+  <section class="connexion-formulaire">
+    <form method="post" action="/connexion">
+      <h1>Connexion</h1>
+      <p class="aide">Entrez le mot de passe de l'interface.</p>
+      {% if erreur %}<div class="alerte-bloc alerte-danger">{{ icone("x-circle") }}<span>{{ erreur }}</span></div>{% endif %}
+      <div class="champ">
+        <label for="mot_de_passe">Mot de passe</label>
+        <input id="mot_de_passe" type="password" name="mot_de_passe" autocomplete="current-password" autofocus required>
+      </div>
+      <button class="btn btn-primaire btn-large">Se connecter</button>
+    </form>
+  </section>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide, badge_reseau %}
+{% block titre %}Historique{% endblock %}
+{% block sous_titre %}Les contenus validés et refusés, avec vos commentaires.{% endblock %}
+{% block contenu %}
+{% if not taches %}
+  {{ etat_vide("clock-counter-clockwise", "Aucun historique", "Les contenus que vous validez ou refusez s'afficheront ici.") }}
+{% else %}
+<div class="carte tableau">
+{% for t in taches %}
+  <div class="ligne" style="--i: {{ loop.index0 }}">
+    <div class="ligne-entete">
+      <span class="statut {{ 'statut-valide' if t.statut == 'validé' else 'statut-refuse' }}">{{ "Validé" if t.statut == "validé" else "Refusé" }}</span>
+      {{ badge_reseau(t.contenu.reseau) }}
+      <span class="meta">{{ t.maj_le|date_fr }}</span>
+      {% set pub = publications.get(t.id) %}
+      {% if pub %}<span class="meta">{{ icone("check-circle") }}Publié le {{ pub.publie_le|date_fr }}{% if pub.mode == "manuel" %} (à la main){% endif %}</span>{% endif %}
+      <span class="meta identifiant">#{{ t.id }}</span>
+    </div>
+    <p class="extrait">{{ t.contenu.texte }}</p>
+    {% if t.statut == "refusé" and t.commentaire %}<p class="commentaire">{{ icone("info") }}<span>{{ t.commentaire }}</span></p>{% endif %}
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

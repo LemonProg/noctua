@@ -1,0 +1,46 @@
+{% macro icone(nom, classe="") -%}
+<svg class="icone {{ classe }}" aria-hidden="true"><use href="#i-{{ nom }}"></use></svg>
+{%- endmacro %}
+
+{% macro lien_nav(chemin, nom_icone, libelle, actif, compteur=0, alerte=False) -%}
+<a href="{{ chemin }}" class="nav-lien{% if actif == chemin %} actif{% endif %}">
+  {{ icone(nom_icone) }}<span>{{ libelle }}</span>
+  {% if compteur %}<span class="compteur{% if alerte %} compteur-alerte{% endif %}">{{ compteur }}</span>{% endif %}
+</a>
+{%- endmacro %}
+
+{% macro etat_vide(nom_icone, titre, texte, lien=None, libelle=None) -%}
+<div class="vide">
+  <div class="vide-icone">{{ icone(nom_icone) }}</div>
+  <p class="vide-titre">{{ titre }}</p>
+  <p class="vide-texte">{{ texte }}</p>
+  {% if lien %}<a href="{{ lien }}" class="btn btn-secondaire">{{ libelle }}</a>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro badge_reseau(reseau) -%}
+<span class="badge badge-reseau">{{ {"instagram": "Instagram", "linkedin": "LinkedIn", "facebook": "Facebook", "tiktok": "TikTok", "x": "X"}.get(reseau, reseau) }}</span>
+{%- endmacro %}
+
+{% set NOMS_AGENTS = {"orchestrateur_marketing": "Orchestrateur marketing", "agent_veille": "Veille", "agent_visuel": "Visuel", "agent_video": "Vidéo",
+  "agent_redacteur": "Rédacteur", "agent_analyste": "Analyste", "orchestrateur_prospection": "Orchestrateur prospection",
+  "agent_recherche": "Recherche", "agent_message": "Message", "agent_suivi": "Suivi", "agent_relecteur": "Relecteur",
+  "agent_erreurs": "Analyse des erreurs", "agent_publication": "Publication", "humain": "Vous"} %}
+
+{% macro nom_agent(identifiant) -%}{{ NOMS_AGENTS.get(identifiant, identifiant) }}{%- endmacro %}
+
+{% set NOMS_TYPES = {"brief_texte": "Brief photos", "brief_visuel": "Brief visuel", "brief_video": "Brief vidéo",
+  "asset": "Visuel créé", "post_brouillon": "Post rédigé", "corrections": "Corrections", "contenu_rejete": "Analyse du rejet",
+  "lecon": "Leçon proposée", "demande_veille": "Veille", "demande_planning": "Planning de la semaine",
+  "analyse_style": "Analyse de style", "objectif": "Objectif", "rapport": "Rapport", "rapport_veille": "Rapport de veille",
+  "demande_publication": "Publication", "demande_analyse": "Analyse des statistiques"} %}
+
+{% set STATUTS = {"à_faire": "À faire", "en_cours": "En cours", "terminé": "Terminé", "échec": "En échec",
+  "à_valider": "À valider", "validé": "Validé", "refusé": "Refusé", "prévu": "Prévu"} %}
+
+{% macro statut(etat) -%}
+{% set classe = {"Publié": "statut-publie", "Prévu cette nuit": "statut-nuit", "Prêt à publier": "statut-valide", "validé": "statut-valide", "terminé": "statut-valide",
+  "À valider": "statut-attente", "à_valider": "statut-attente", "Refusé": "statut-refuse", "refusé": "statut-refuse",
+  "En échec": "statut-refuse", "échec": "statut-refuse", "Échec de publication": "statut-refuse"}.get(etat, "statut-neutre") %}
+<span class="statut {{ classe }}">{{ STATUTS.get(etat, etat) }}</span>
+{%- endmacro %}

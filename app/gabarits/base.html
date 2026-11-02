@@ -1,0 +1,90 @@
+{% from "_macros.html" import icone, lien_nav %}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ self.titre() }} · {{ nom_agence }}</title>
+  <link rel="preload" href="/statique/polices/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/statique/style.css?v={{ version_statique }}">
+{% include "_tete_app.html" %}
+  <script src="/statique/htmx.min.js?v={{ version_statique }}" defer></script>
+  <script src="/statique/agence.js?v={{ version_statique }}" defer></script>
+</head>
+<body hx-boost="true">
+{% include "_icones.html" %}
+<input type="checkbox" id="menu" class="menu-bascule" hidden>
+<div class="app">
+  <aside class="sidebar">
+    <a href="/" class="marque">
+      <span class="logo">{{ initiale }}</span>
+      <span class="marque-texte"><strong>{{ nom_agence }}</strong><span>Agence IA</span></span>
+    </a>
+    <form method="get" action="/recherche" class="recherche-menu" role="search">
+      {{ icone("loupe") }}<input type="search" name="q" placeholder="Rechercher" aria-label="Rechercher dans les légendes" aria-keyshortcuts="/">
+      <kbd>/</kbd>
+    </form>
+
+    <nav class="nav">
+      <p class="nav-titre">Contenus</p>
+      {{ lien_nav("/", "house", "Accueil", actif) }}
+      {{ lien_nav("/a-valider", "tray", "À valider", actif, bandeau.nb_a_valider) }}
+      {{ lien_nav("/calendrier", "calendar-blank", "Calendrier", actif, bandeau.nb_a_publier) }}
+      {{ lien_nav("/grille", "images", "Aperçu du profil", actif) }}
+      {{ lien_nav("/brief", "pencil-simple-line", "Nouveau brief", actif) }}
+
+      <p class="nav-titre">Suivi</p>
+      {{ lien_nav("/agents", "pyramide", "Agents", actif, bandeau.nb_echecs, alerte=True) }}
+      {{ lien_nav("/statistiques", "chart-bar", "Statistiques", actif) }}
+      {{ lien_nav("/veille", "info", "Veille", actif) }}
+      {{ lien_nav("/lecons", "sparkle", "Leçons", actif, bandeau.nb_lecons) }}
+    </nav>
+
+    <div class="sidebar-pied">
+      <div class="usage">
+        {% for nom, libelle in (("five_hour", "5 h"), ("seven_day", "Semaine")) %}
+          {% set f = bandeau.quota.get(nom) %}
+          <div class="usage-compact" title="Abonnement Claude, fenêtre {{ libelle }}{% if f and f.reprise %} · remise à zéro {{ f.reprise|date_fr }}{% endif %}">
+            <span class="usage-libelle">{{ libelle }}</span>
+            <span class="jauge{% if f and f.pourcentage >= bandeau.quota_seuil %} jauge-alerte{% elif f and f.pourcentage >= 75 %} jauge-attention{% endif %}"><span style="width: {{ [f.pourcentage if f else 0, 100]|min }}%"></span></span>
+            <span class="chiffre">{{ f.pourcentage if f else "—" }}{% if f %} %{% endif %}</span>
+          </div>
+        {% endfor %}
+        <div class="usage-bas">
+          <span class="usage-disque{% if bandeau.disque.sous_seuil %} alerte{% endif %}" title="Espace disque libre">{{ icone("hard-drives") }}{{ "%.1f"|format(bandeau.disque.libre_octets / 1073741824) }} Go</span>
+          <form method="post" action="/quota/actualiser">
+            <button class="btn-icone" title="Actualiser le quota{% if bandeau.quota_mesure %} (mesuré {{ bandeau.quota_mesure|depuis }}){% endif %}" aria-label="Actualiser le quota">{{ icone("arrow-counter-clockwise") }}</button>
+          </form>
+        </div>
+      </div>
+      {{ lien_nav("/reglages", "reglages", "Réglages", actif, bandeau.nb_echecs + bandeau.nb_directions, alerte=bandeau.nb_echecs > 0) }}
+    </div>
+  </aside>
+  <label for="menu" class="voile" aria-hidden="true"></label>
+
+  <div class="principal">
+    <header class="topbar {% block largeur %}{% endblock %}">
+      <label for="menu" class="btn-icone bouton-menu" aria-label="Menu">{{ icone("list") }}</label>
+      <div class="topbar-titre">
+        {% if actif == "/reglages" and request.url.path != "/reglages" %}<a href="/reglages" class="fil-ariane">{{ icone("caret-left") }}Réglages</a>{% endif %}
+        <h1>{% block titre %}{% endblock %}</h1>
+        <p>{% block sous_titre %}{% endblock %}</p>
+      </div>
+      <div class="topbar-actions">{% block actions %}{% endblock %}</div>
+    </header>
+
+    <main class="contenu {{ self.largeur() }}">
+      {% if bandeau.disque.alerte %}
+        <div class="alerte-bloc alerte-danger">{{ icone("warning-circle") }}<span>{{ bandeau.disque.alerte }}</span></div>
+      {% endif %}
+      {% if info %}<div class="alerte-bloc alerte-succes">{{ icone("check-circle") }}<span>{{ info }}</span></div>{% endif %}
+      {% if erreur %}<div class="alerte-bloc alerte-danger">{{ icone("x-circle") }}<span>{{ erreur }}</span></div>{% endif %}
+      {% block contenu %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

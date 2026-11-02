@@ -1,0 +1,11 @@
+{
+  "name": "noctua-video",
+  "private": true,
+  "description": "Rendu des vidéos (motion design) de l'agence avec HyperFrames. Versions figées : mise à jour volontaire uniquement.",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "gsap": "3.15.0",
+    "hyperframes": "0.8.162"
+  }
+}

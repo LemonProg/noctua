@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, badge_reseau, statut, NOMS_AGENTS, NOMS_TYPES %}
+{% set JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"] %}
+{% set MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"] %}
+{% block titre %}Bonjour{% endblock %}
+{% block sous_titre %}{{ JOURS[maintenant.weekday()]|capitalize }} {{ maintenant.day }} {{ MOIS[maintenant.month - 1] }} · voici où en est l'agence.{% endblock %}
+{% block largeur %}large{% endblock %}
+{% block actions %}
+  {% if en_pause %}<span class="etat-agence pause" title="Abonnement Claude au-dessus du seuil : reprise à la remise à zéro">{{ icone("warning-circle") }}En pause (quota)</span>
+  {% elif nuit %}<span class="etat-agence nuit" title="Les productions lourdes tournent la nuit">{{ icone("sparkle") }}Production de nuit</span>
+  {% else %}<span class="etat-agence active">{{ icone("check-circle") }}Agence active</span>{% endif %}
+{% endblock %}
+{% macro ecart(valeur) %}<b class="{{ 'hausse' if valeur > 0 else ('baisse' if valeur < 0 else '') }}">{{ "+" if valeur > 0 }}{{ valeur }}</b>{% endmacro %}
+{% block contenu %}
+
+{# Tout le tableau se met à jour seul chaque minute (déclencheur à part : voir agents.html). #}
+<span hx-get="/" hx-trigger="every 60s" hx-select="#accueil-vivant" hx-target="#accueil-vivant" hx-swap="outerHTML" hidden></span>
+<div id="accueil-vivant">
+{% if bilan %}{% set b = bilan %}
+<section class="carte bilan-semaine">
+  <header><span class="bilan-sur-titre">Bilan de la semaine</span><strong>du {{ b.lundi.strftime("%d/%m") }} au {{ (b.lundi + un_jour * 6).strftime("%d/%m") }}</strong></header>
+  <dl>
+    <div><dt>Posts publiés</dt><dd>{{ b.publies }}</dd></div>
+    <div><dt>Abonnés</dt><dd>{{ ("%+d"|format(b.abonnes)) if b.abonnes is not none else "—" }}</dd></div>
+    <div><dt>Leçons retenues</dt><dd>{{ b.lecons }}</dd></div>
+    <div><dt>Tâches des agents</dt><dd>{{ b.taches }}{% if b.echecs %} <small class="bilan-echecs">· {{ b.echecs }} échec{{ "s" if b.echecs > 1 }}</small>{% endif %}</dd></div>
+    <div><dt>Abonnement (pic)</dt><dd>{{ (b.abonnement ~ " %") if b.abonnement is not none else "—" }}</dd></div>
+  </dl>
+  {% if b.meilleur %}<p class="bilan-meilleur">{{ icone("sparkle") }}Meilleur post : {{ (b.meilleur.description or "sans légende")|truncate(70) }} — <b>{{ nombre(b.meilleur.vues or 0) }} vues</b></p>{% endif %}
+</section>
+{% endif %}
+
+{# --- Chiffres clés --- #}
+<section class="indicateurs">
+  <div class="carte indicateur indicateur-abonnes">
+    <span class="indicateur-libelle">Abonnés</span>
+    <strong>{{ nombre(abonnes.nombre) if abonnes else "—" }}</strong>
+    <span class="indicateur-note">{% if not abonnes %}au prochain relevé Instagram
+      {%- elif not abonnes.j7 %}premier relevé {{ abonnes.le|depuis }}
+      {%- elif abonnes.j7.depuis %}{{ ecart(abonnes.j7.ecart) }} depuis le {{ abonnes.j7.depuis.strftime("%d/%m") }}
+      {%- else %}{{ ecart(abonnes.j7.ecart) }} en 7 j{% if abonnes.j30 and not abonnes.j30.depuis %} · {{ ecart(abonnes.j30.ecart) }} en 30 j{% endif %}{% endif %}</span>
+    {{ courbe }}
+  </div>
+  <div class="carte indicateur">
+    <span class="indicateur-libelle">Vues par post</span>
+    <strong>{{ nombre(indicateurs.vues) if indicateurs.vues is not none else "—" }}</strong>
+    <span class="indicateur-note">{% if indicateurs.posts %}moyenne des {{ indicateurs.posts }} derniers posts{% else %}aucun relevé{% endif %}</span>
+  </div>
+  <div class="carte indicateur">
+    <span class="indicateur-libelle">Couverture par post</span>
+    <strong>{{ nombre(indicateurs.couverture) if indicateurs.couverture is not none else "—" }}</strong>
+    <span class="indicateur-note">comptes touchés en moyenne</span>
+  </div>
+  <div class="carte indicateur">
+    <span class="indicateur-libelle">Engagement</span>
+    <strong>{{ nombre(indicateurs.engagement, 1) ~ " %" if indicateurs.engagement is not none else "—" }}</strong>
+    <span class="indicateur-note">interactions ÷ couverture</span>
+  </div>
+</section>
+
+<div class="tableau-bord">
+  <div class="colonne-principale">
+    <section class="carte bloc bloc-valider">
+      <header class="bloc-entete">
+        <h2>{{ icone("tray") }}À valider{% if a_valider %}<span class="compteur">{{ a_valider|length }}</span>{% endif %}</h2>
+        {% if a_valider %}<a href="/a-valider" class="btn btn-primaire btn-petit">Tout voir</a>{% endif %}
+      </header>
+      {% if a_valider %}
+        <ul class="liste-compacte">
+        {% for item in a_valider[:4] %}{% set t = item.tache %}
+          <li><a href="/a-valider">
+            <span class="mini-vignette">{% if item.medias and item.medias[0].type in ("image", "vidéo") %}<img src="/media/{{ item.medias[0].id }}/vignette" alt="" loading="lazy">{% else %}{{ icone("pencil-simple-line") }}{% endif %}</span>
+            <span class="liste-texte"><strong>{{ (t.contenu.texte or "")|truncate(70) }}</strong>
+              <span class="meta">{{ badge_reseau(t.contenu.reseau) }} {{ t.contenu.horaire_prevu|date_fr }}</span></span>
+          </a></li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="vide-court">{{ icone("check-circle") }}Rien à valider : tout est à jour.</p>
+      {% endif %}
+    </section>
+    <section class="carte bloc">
+      <header class="bloc-entete">
+        <h2>{{ icone("chart-bar") }}Vues par post</h2>
+        {{ legende }}
+      </header>
+      {% if posts %}{{ g_vues }}{% else %}<p class="vide-court">Les statistiques apparaîtront après le premier relevé Instagram.</p>{% endif %}
+    </section>
+    <section class="carte bloc">
+      <header class="bloc-entete">
+        <h2>{{ icone("chart-bar") }}Engagement par post</h2>
+        <a href="/statistiques" class="lien-discret">Détail des posts</a>
+      </header>
+      {% if posts|length >= 2 %}{{ g_engagement }}{% else %}<p class="vide-court">Il faut au moins deux posts relevés.</p>{% endif %}
+    </section>
+  </div>
+  <div class="colonne-laterale">
+    <section class="carte bloc bloc-lecons">
+      <header class="bloc-entete">
+        <h2>{{ icone("sparkle") }}Leçons à valider{% if lecons %}<span class="compteur">{{ lecons|length }}</span>{% endif %}</h2>
+        {% if lecons %}<a href="/lecons" class="lien-discret">Ouvrir</a>{% endif %}
+      </header>
+      {% if lecons %}
+        <ul class="liste-regles">{% for l in lecons[:3] %}<li><a href="/lecons">{{ l.regle|truncate(110) }}</a></li>{% endfor %}</ul>
+      {% else %}
+        <p class="vide-court">{{ icone("check-circle") }}Aucune leçon en attente.</p>
+      {% endif %}
+    </section>
+    {# --- Post star --- #}
+    {% if star %}{% set l = star.ligne %}
+    <section class="carte bloc bloc-star">
+      <header class="bloc-entete">
+        <h2>{{ icone("sparkle") }}{{ "Post star du mois" if star.du_mois else "Meilleur post récent" }}</h2>
+        {% if l.lien|lien_sur %}<a href="{{ l.lien|lien_sur }}" class="lien-discret" target="_blank" rel="noopener">Instagram</a>{% endif %}
+      </header>
+      <div class="star">
+        <span class="star-apercu">{% if star.medias and star.medias[0].type in ("image", "vidéo") %}<img src="/media/{{ star.medias[0].id }}/vignette" alt="" loading="lazy">
+          {%- elif l.apercu|lien_sur %}<img src="{{ l.apercu|lien_sur }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+          {%- else %}{{ icone("image-square") }}{% endif %}</span>
+        <div class="star-chiffres">
+          <span class="meta">{{ {"image": "Image", "carrousel": "Carrousel", "reel": "Reel"}.get(l.type, l.type or "Post") }} · {{ star.publie_le.strftime("%d/%m/%Y") }}</span>
+          <dl>
+            <div><dt>Vues</dt><dd>{{ nombre(l.vues) if l.vues is not none else "—" }}</dd></div>
+            <div><dt>Couverture</dt><dd>{{ nombre(l.couverture) if l.couverture is not none else "—" }}</dd></div>
+            <div><dt>Engagement</dt><dd>{{ nombre(star.engagement, 1) ~ " %" if star.engagement is not none else "—" }}</dd></div>
+            <div><dt>Abonnés</dt><dd>{{ "+" ~ l.abonnes if l.abonnes else "—" }}</dd></div>
+          </dl>
+        </div>
+      </div>
+      {% if star.explication %}<blockquote class="star-analyse">{{ star.explication }}<cite>L'analyste</cite></blockquote>{% endif %}
+      {% if not star.du_mois %}<p class="aide">Aucun post ces 30 derniers jours : voici le meilleur des derniers posts.</p>{% endif %}
+    </section>
+    {% endif %}
+
+    <section class="carte bloc">
+      <header class="bloc-entete">
+        <h2>{{ icone("arrow-counter-clockwise") }}Travail des agents{% if nb_en_cours %}<span class="compteur">{{ nb_en_cours }}</span>{% endif %}</h2>
+        {% if bandeau.nb_echecs %}<a href="/echecs" class="statut statut-refuse">{{ bandeau.nb_echecs }} en échec</a>{% endif %}
+      </header>
+      {% if en_cours %}
+        <ul class="liste-taches">
+        {% for t in en_cours %}
+          <li><span class="point-etat {{ 'actif' if t.statut == 'en_cours' else ('nuit' if t.creneau != 'jour' else '') }}"></span>
+            <span class="liste-texte"><strong>{{ NOMS_TYPES.get(t.type, t.type) }}</strong>
+              <span class="meta">{{ NOMS_AGENTS.get(t.agent, t.agent) }} · {{ "en cours" if t.statut == "en_cours" else ("prévu cette nuit" if t.creneau != "jour" else "en attente") }}</span></span></li>
+        {% endfor %}
+        </ul>
+        {% if nb_en_cours > en_cours|length %}<p class="aide">et {{ nb_en_cours - en_cours|length }} autre(s)</p>{% endif %}
+      {% else %}
+        <p class="vide-court">{{ icone("check-circle") }}Les agents sont au repos.</p>
+      {% endif %}
+    </section>
+    <section class="carte bloc">
+      <header class="bloc-entete"><h2>{{ icone("chart-bar") }}Couverture par format</h2></header>
+      {% if posts %}{{ g_formats }}<p class="aide">Comptes touchés en moyenne, selon le format.</p>{% else %}<p class="vide-court">Pas encore de données.</p>{% endif %}
+    </section>
+  </div>
+</div>
+
+  <section class="carte bloc bloc-prochaines">
+    <header class="bloc-entete">
+      <h2>{{ icone("calendar-blank") }}Prochaines publications</h2>
+      <a href="/calendrier" class="lien-discret">Calendrier</a>
+    </header>
+    {% if prochaines %}
+      <div class="prochaines">
+      {% for e in prochaines %}{% set v = vignettes.get(e.racine.id) %}
+        <a href="/calendrier/tache/{{ e.racine.id }}" class="prochaine">
+          <span class="prochaine-apercu">{% if v and v[0].type in ("image", "vidéo") %}<img src="/media/{{ v[0].id }}/vignette" alt="" loading="lazy">{% else %}{{ icone("image-square") }}{% endif %}</span>
+          <span class="prochaine-texte"><strong>{{ JOURS[e.quand.weekday()]|capitalize }} {{ e.quand.strftime("%d/%m · %H:%M") }}</strong>{{ statut(e.etat) }}</span>
+        </a>
+      {% endfor %}
+      </div>
+    {% else %}
+      <p class="vide-court">Rien de prévu pour les deux prochaines semaines : le planning se prépare dimanche soir.</p>
+    {% endif %}
+  </section>
+
+<footer class="sante" aria-label="Santé du système">
+  <span class="{{ 'ok' if sante.sauvegarde_ok else 'alerte' }}">Sauvegarde : {{ sante.sauvegarde|depuis if sante.sauvegarde else "aucune" }}</span>
+  <span class="{{ 'alerte' if bandeau.disque.sous_seuil else 'ok' }}">Disque : {{ "%.1f"|format(bandeau.disque.libre_octets / 1073741824)|replace(".", ",") }} Go libres</span>
+  {% if sante.instagram %}<span class="{{ 'ok' if sante.releve_ok else 'alerte' }}">Statistiques : {{ sante.releve|depuis if sante.releve else "jamais relevées" }}</span>
+  {% else %}<span class="alerte">Instagram non relié</span>{% endif %}
+  <span class="{{ 'ok' if sante.notifications else 'eteint' }}">Notifications : {{ "actives" if sante.notifications else "désactivées" }}</span>
+</footer>
+</div>
+{% endblock %}

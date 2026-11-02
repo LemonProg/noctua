@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% from "_lecture.html" import puces, synthese %}
+{% block titre %}Veille{% endblock %}
+{% block sous_titre %}Ce que fait le marché, chaque dimanche : l'agence s'en inspire sans copier.{% endblock %}
+{% block actions %}<form method="post" action="/veille/lancer"><button class="btn btn-secondaire">{{ icone("arrow-counter-clockwise") }}<span>Lancer une veille</span></button></form>{% endblock %}
+{% block contenu %}
+{% if en_cours %}<div class="alerte-bloc alerte-info">{{ icone("info") }}<span>{% if en_cours|de_nuit %}Veille prévue cette nuit : le rapport sera là demain matin.{% else %}Veille en cours : rechargez la page dans quelques minutes.{% endif %}</span></div>{% endif %}
+{% if not rapport %}
+  {{ etat_vide("info", "Aucune veille pour l'instant", "La première veille aura lieu dimanche soir. Vous pouvez aussi la lancer maintenant.") }}
+{% else %}
+  <section class="carte lecture">
+    <header class="lecture-entete"><h2>{{ icone("sparkle") }}L'essentiel</h2><span class="meta">Semaine du {{ rapport.semaine|jour_fr }} · {{ ligne.cree_le|date_fr }}</span></header>
+    {{ synthese(rapport.synthese) }}
+  </section>
+
+  <div class="lecture-colonnes">
+    <section class="carte lecture">
+      <h2>{{ icone("chart-bar") }}Ce qui marche chez les autres</h2>
+      {{ puces(rapport.tendances) }}
+    </section>
+    <section class="carte lecture">
+      <h2>{{ icone("check-circle") }}Ce que l'agence en retient</h2>
+      {{ puces(rapport.recommandations, "numerotees") }}
+    </section>
+  </div>
+{% endif %}
+
+{% if concurrents %}
+  <h2 class="section-titre">Concurrents suivis <span class="compteur">{{ concurrents|length }}</span></h2>
+  <div class="concurrents">
+  {% for c in concurrents %}{% set p = c.ce_qui_marche|point %}
+    <article class="carte concurrent" style="--i: {{ loop.index0 }}">
+      <header><strong>{{ c.nom }}</strong>{% if c.zone %}<span class="meta">{{ c.zone }}</span>{% endif %}</header>
+      {% if p.detail %}<details><summary>{{ p.titre }}</summary><p>{{ p.detail }}</p></details>{% else %}<p>{{ p.titre }}</p>{% endif %}
+      {% if c.site|lien_sur %}<a href="{{ c.site|lien_sur }}" target="_blank" rel="noopener" hx-boost="false" class="meta">{{ c.site|replace("https://", "")|replace("http://", "")|replace("www.", "") }}</a>{% endif %}
+    </article>
+  {% endfor %}
+  </div>
+{% endif %}
+
+{% if rapport %}
+  <details class="extrait-rejete sources"><summary>Sources ({{ rapport.sources|length }})</summary>
+    <ul class="puces">{% for s in rapport.sources %}<li>{% if s|lien_sur %}<a href="{{ s|lien_sur }}" target="_blank" rel="noopener" hx-boost="false">{{ s }}</a>{% else %}{{ s }}{% endif %}</li>{% endfor %}</ul>
+  </details>
+{% endif %}
+{% endblock %}

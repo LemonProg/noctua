@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% block titre %}Corbeille{% endblock %}
+{% block sous_titre %}Suppression automatique sous 24 h, après analyse des contenus refusés.{% endblock %}
+{% block contenu %}
+{% if not elements %}
+  {{ etat_vide("trash", "Corbeille vide", "Les rushs écartés et les contenus refusés passent ici avant suppression.") }}
+{% else %}
+<div class="galerie">
+{% for e in elements %}
+  {% set a = e.asset %}
+  <article class="tuile" style="--i: {{ loop.index0 }}">
+    {% with medias = [a] %}{% include "_medias.html" %}{% endwith %}
+    <div class="tuile-infos">
+      <span class="tuile-nom" title="{{ a.nom_original }}">{{ a.nom_original }}</span>
+      <span class="meta">{{ {"ne_pas_utiliser": "Écarté", "refusé": "Refusé", "relecteur": "Corrigé par le relecteur"}.get(a.motif_corbeille, a.motif_corbeille) }} · {{ a.corbeille_le|date_fr }}</span>
+      {% if e.suppression %}
+        <span class="statut statut-neutre">Suppression le {{ e.suppression|date_fr }}</span>
+      {% else %}
+        <span class="statut statut-attente">Suppression après analyse</span>
+      {% endif %}
+      <div class="tuile-actions">
+        <form method="post" action="/corbeille/{{ a.id }}/restaurer"><button class="btn btn-secondaire btn-petit">{{ icone("arrow-counter-clockwise") }}<span>Restaurer</span></button></form>
+        {% if a.analyse == "en_attente" and bandeau.disque.sous_seuil %}
+          <form method="post" action="/corbeille/{{ a.id }}/supprimer"><button class="btn btn-danger btn-petit">Supprimer sans analyse</button></form>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide, badge_reseau %}
+{% block titre %}À valider{% endblock %}
+{% block sous_titre %}Relisez chaque contenu. Rien n'est publié sans votre accord.{% endblock %}
+{% block actions %}<a href="/brief" class="btn btn-primaire">{{ icone("plus") }}<span>Nouveau brief</span></a>{% endblock %}
+{% block contenu %}
+{% if not posts %}
+  {{ etat_vide("tray", "Tout est à jour", "Les contenus rédigés par les agents apparaîtront ici pour validation.", "/brief", "Créer un brief") }}
+{% endif %}
+{% if posts %}
+<p class="raccourcis">
+  <span class="raccourcis-clavier"><kbd>J</kbd> <kbd>K</kbd> post suivant ou précédent · <kbd>V</kbd> valider · <kbd>R</kbd> refuser · <kbd>E</kbd> écarter</span>
+  <span class="raccourcis-geste">Glissez un post à droite pour le valider, à gauche pour le refuser.</span>
+</p>
+{% endif %}
+{# Nouveaux contenus arrivés pendant la lecture : un bandeau les annonce, la liste n'est jamais remplacée sous vos yeux. #}
+<div id="nouveautes" aria-live="polite" hx-get="/a-valider/nouveautes?vus={{ posts|map(attribute='tache.id')|join(',') }}"
+     hx-trigger="every 20s" hx-swap="innerHTML" hx-disinherit="*"></div>
+<div class="liste">
+{% for post in posts %}
+  {% set t = post.tache %}
+  <article class="carte revue" id="post-{{ t.id }}" style="--i: {{ loop.index0 }}">
+    <header class="revue-entete">
+      {{ badge_reseau(t.contenu.reseau) }}
+      <span class="meta">{{ icone("calendar-blank") }}{{ t.contenu.horaire_prevu|date_fr }}</span>
+      {% if post.medias|selectattr("origine", "equalto", "généré")|list %}<span class="badge badge-ia">{{ icone("film-strip" if post.medias[0].type == "vidéo" else "sparkle") }}{{ "Reel" if post.medias[0].type == "vidéo" else ("Carrousel" if post.medias|length > 1 else "Visuel") }} créé</span>{% endif %}
+      <span class="meta identifiant">#{{ t.id }}</span>
+      <a href="/grille?post={{ t.id }}#grille-{{ t.id }}" class="meta lien-grille">{{ icone("images") }}Voir dans la grille</a>
+      {% if posts|length > 1 %}<span class="meta revue-rang">{{ loop.index }} / {{ posts|length }}</span>{% endif %}
+    </header>
+    {% if post.medias %}
+      {% set carrousel = post.medias|length > 1 and post.medias|selectattr("origine", "equalto", "généré")|list|length == post.medias|length %}
+      <div class="medias {{ 'medias-carrousel' if carrousel else 'medias-' ~ [post.medias|length, 3]|min }}">{% with medias = post.medias %}{% include "_medias.html" %}{% endwith %}</div>
+      {% if carrousel %}<p class="aide">{{ post.medias|length }} slides : faites défiler.</p>{% endif %}
+    {% endif %}
+    <div class="revue-texte">{{ t.contenu.texte }}</div>
+    {% if post.visuel %}
+      <details class="extrait-rejete">
+        <summary>{{ "Script et conception du reel" if post.visuel.reel else "Conception du visuel" }}{% if post.visuel.cout_usd %} · coût {{ "%.2f"|format(post.visuel.cout_usd) }} ${% endif %}</summary>
+        <p class="extrait pre">{{ post.visuel.prompt }}</p>
+      </details>
+    {% endif %}
+    <footer class="revue-actions">
+      <form method="post" action="/taches/{{ t.id }}/valider" class="validation">
+        <div class="validation-reglages">
+          <label class="champ-compact">{{ icone("calendar-blank") }}<span class="sr">Horaire de publication</span>
+            <input type="datetime-local" name="horaire" value="{{ t.contenu.horaire_prevu|champ_date }}" required></label>
+          <label class="case" title="Ajoute la mention « Créé avec l'IA » sur Instagram"><input type="checkbox" name="etiquette_ia" value="oui"{% if t.contenu.etiquette_ia %} checked{% endif %}><span>Étiquette IA</span></label>
+        </div>
+        <button class="btn btn-primaire">{{ icone("check") }}<span>Valider</span></button>
+      </form>
+      <details class="refus">
+        <summary class="btn btn-secondaire">{{ icone("x") }}<span>Refuser</span></summary>
+        <form method="post" action="/taches/{{ t.id }}/refuser" class="champ">
+          <label for="commentaire-{{ t.id }}">Motif du refus</label>
+          <textarea id="commentaire-{{ t.id }}" name="commentaire" required rows="3" placeholder="Ex. trop long, ton trop commercial, mauvaise ville…"></textarea>
+          <p class="aide">Obligatoire : il sert à tirer une leçon pour ne pas reproduire l'erreur.</p>
+          <button class="btn btn-danger">Confirmer le refus</button>
+        </form>
+      </details>
+      <details class="refus ecart">
+        <summary class="btn btn-fantome">{{ icone("trash") }}<span>Ne pas utiliser</span></summary>
+        <form method="post" action="/taches/{{ t.id }}/ecarter" class="champ">
+          <label for="ecart-{{ t.id }}">Pourquoi l'écarter ? <span class="facultatif">facultatif</span></label>
+          <textarea id="ecart-{{ t.id }}" name="commentaire" rows="2" placeholder="Ex. sujet déjà traité, pas le bon moment…"></textarea>
+          <p class="aide">Le contenu ne sera pas réécrit. Il sera analysé pour en tirer une leçon.</p>
+          <button class="btn btn-secondaire">Écarter ce contenu</button>
+        </form>
+      </details>
+    </footer>
+  </article>
+{% endfor %}
+</div>
+{% endblock %}

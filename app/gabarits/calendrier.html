@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, badge_reseau, statut, NOMS_AGENTS, NOMS_TYPES, STATUTS %}
+{% set JOURS = ["Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim."] %}
+{# Chaque tâche de la lignée, décrite par le travail de l'agent qui la traite. #}
+{% set ETAPES = {"brief_visuel": "Création du visuel", "brief_video": "Création de la vidéo", "brief_texte": "Rédaction du texte",
+  "asset": "Rédaction du texte", "post_brouillon": "Relecture et validation", "corrections": "Nouvelle version demandée",
+  "contenu_rejete": "Analyse du rejet", "lecon": "Leçon proposée", "demande_publication": "Publication sur Instagram"} %}
+{% set MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"] %}
+{% set dimanche = jours[-1].date %}
+{% block titre %}Calendrier{% endblock %}
+{% block largeur %}large{% endblock %}
+{% block sous_titre %}Les publications et le travail des agents, jour par jour.{% endblock %}
+{% block actions %}<form method="post" action="/calendrier/preparer"><button class="btn btn-secondaire">{{ icone("arrow-counter-clockwise") }}<span>Préparer la semaine maintenant</span></button></form>{% endblock %}
+{% block contenu %}
+{% if en_cours %}<div class="alerte-bloc alerte-info">{{ icone("info") }}<span>{% if en_cours|de_nuit %}Préparation prévue cette nuit ({{ en_cours|length }} tâche(s)) : prête demain matin.{% else %}Préparation en cours ({{ en_cours|length }} tâche(s)) : rechargez la page dans quelques minutes.{% endif %}</span></div>{% endif %}
+
+<div class="semaine-entete">
+  <h2>Semaine du {{ lundi.day }}{% if lundi.month != dimanche.month %} {{ MOIS[lundi.month - 1] }}{% endif %} au {{ dimanche.day }} {{ MOIS[dimanche.month - 1] }} {{ dimanche.year }}</h2>
+  <nav class="semaine-nav" aria-label="Changer de semaine">
+    <a href="/calendrier?semaine={{ precedente }}" class="btn-icone" aria-label="Semaine précédente" title="Semaine précédente">{{ icone("caret-left") }}</a>
+    {% if lundi != cette_semaine %}<a href="/calendrier" class="btn btn-secondaire btn-petit">Cette semaine</a>{% endif %}
+    <a href="/calendrier?semaine={{ suivante }}" class="btn-icone" aria-label="Semaine suivante" title="Semaine suivante">{{ icone("caret-right") }}</a>
+  </nav>
+</div>
+
+{% if planning %}
+<details class="carte strategie">
+  <summary>{{ icone("sparkle") }}<span>Stratégie de la semaine</span><span class="meta">planifiée le {{ planning.cree_le|date_fr }}</span></summary>
+  <div class="revue-texte">{{ planning.strategie }}</div>
+</details>
+{% endif %}
+
+<div class="semaine">
+{% for jour in jours %}
+  <section class="jour{% if jour.date == aujourdhui %} aujourdhui{% endif %}" style="--i: {{ loop.index0 }}">
+    <header class="jour-entete"><span>{{ JOURS[loop.index0] }}</span><strong>{{ jour.date.day }}</strong></header>
+    <div class="jour-elements">
+    {% for e in jour.elements %}
+      {% if e.racine is defined %}
+        {% set texte = e.post.contenu.texte if e.post else e.brief.contenu.objectif %}
+        <a href="/calendrier/tache/{{ e.racine.id }}?semaine={{ lundi }}" class="element-pub{% if e.pret %} pret{% endif %}">
+          {% set vignette = vignettes.get(e.racine.id) %}
+          <div class="element-apercu{% if not (vignette and vignette[0].type in ('image', 'vidéo')) %} sans-image{% endif %}">
+            {% if vignette and vignette[0].type in ("image", "vidéo") %}<img src="/media/{{ vignette[0].id }}/vignette" alt="" loading="lazy">
+            {% else %}<span class="apercu-vide">{{ icone({"brief_visuel": "image-square", "brief_video": "film-strip"}.get(e.brief.type, "images")) }}</span>{% endif %}
+            {% if e.post and e.post.contenu.medias|length > 1 %}<span class="apercu-nombre">{{ icone("images") }}{{ e.post.contenu.medias|length }}</span>{% endif %}
+            {% if vignette and vignette[0].type == "vidéo" %}<span class="apercu-nombre">{{ icone("film-strip") }}Reel</span>{% endif %}
+          </div>
+          <div class="element-corps">
+            <div class="element-ligne"><span class="heure">{{ e.quand.strftime("%H:%M") }}</span>{{ badge_reseau(e.brief.contenu.reseau) }}</div>
+            <p class="element-texte">{{ texte }}</p>
+            {{ statut(e.etat) }}
+          </div>
+        </a>
+      {% else %}
+        {% set classe = "element-tache" ~ (" prevu" if not e.tache else "") %}
+        {% if e.tache %}<a href="/calendrier/tache/{{ e.tache.id }}?semaine={{ lundi }}" class="{{ classe }}">{% else %}<div class="{{ classe }}" title="Lancé automatiquement par le planificateur">{% endif %}
+          <span class="heure">{{ e.quand.strftime("%H:%M") }}</span>
+          <span class="element-tache-nom">{{ NOMS_TYPES.get(e.type, e.type) }}</span>
+          <span class="element-tache-agent">{{ NOMS_AGENTS.get(e.agent, e.agent) }} · {{ STATUTS.get(e.etat, e.etat) }}</span>
+        {% if e.tache %}</a>{% else %}</div>{% endif %}
+      {% endif %}
+    {% else %}
+      <p class="jour-vide">Rien de prévu</p>
+    {% endfor %}
+    </div>
+  </section>
+{% endfor %}
+</div>
+
+{% if detail %}
+{% set fermer = "/calendrier?semaine=" ~ lundi %}
+<div class="modale" role="dialog" aria-modal="true" aria-labelledby="modale-titre">
+  <a href="{{ fermer }}" class="modale-voile" aria-label="Fermer"></a>
+  <article class="modale-panneau">
+  {% if detail.publication %}
+    {% set e = detail.publication %}
+    {% set post = e.post %}
+    <header class="modale-entete">
+      <div>
+        {% set nb = detail.medias|length %}
+        <h2 id="modale-titre">{% if nb > 1 %}Carrousel · {{ nb }} slides{% elif nb == 1 %}{{ "Reel" if detail.medias[0].type == "vidéo" else "Visuel" }} + texte{% elif e.brief.type == "brief_visuel" %}Visuel + texte{% else %}Photos + texte{% endif %}</h2>
+        <div class="ligne-entete">{{ statut(e.etat) }}{{ badge_reseau(e.brief.contenu.reseau) }}<span class="meta">{{ icone("calendar-blank") }}{{ e.quand|date_fr }}</span><span class="meta identifiant">#{{ post.id if post else e.racine.id }}</span></div>
+      </div>
+      <a href="{{ fermer }}" class="btn-icone" aria-label="Fermer">{{ icone("x") }}</a>
+    </header>
+
+    <div class="modale-corps">
+      <div class="modale-apercu">
+        {% if detail.medias %}
+          <div class="medias {{ 'medias-carrousel' if detail.medias|length > 1 else 'medias-1' }}">{% with medias = detail.medias %}{% include "_medias.html" %}{% endwith %}</div>
+          {% if detail.medias|length > 1 %}<p class="aide">{{ detail.medias|length }} slides, dans l'ordre de publication : faites défiler.</p>{% endif %}
+        {% else %}
+          <div class="apercu-attente">{{ icone("image-square") }}<span>{{ "Aucun média." if post else "L'aperçu apparaîtra une fois le contenu produit." }}</span></div>
+        {% endif %}
+      </div>
+
+      <div class="modale-infos">
+        <section>
+          <h3>Texte du post</h3>
+          {% if post %}<div class="revue-texte">{{ post.contenu.texte }}</div>{% else %}<p class="aide">Pas encore rédigé.</p>{% endif %}
+        </section>
+
+        <section class="modale-actions">
+          {% if e.pret or e.publication %}
+            <a href="/taches/{{ post.id }}/export" hx-boost="false" class="btn btn-primaire" download>{{ icone("download-simple") }}<span>Télécharger</span></a>
+          {% else %}
+            <button class="btn btn-primaire" disabled>{{ icone("download-simple") }}<span>Télécharger</span></button>
+          {% endif %}
+          {% if e.publication %}
+            <span class="statut statut-publie">Publié le {{ e.publication.publie_le|date_fr }}{% if e.publication.mode == "manuel" %} (à la main){% endif %}</span>
+            {% if e.publication.lien|lien_sur %}<a href="{{ e.publication.lien|lien_sur }}" target="_blank" rel="noopener" hx-boost="false" class="btn btn-fantome btn-petit">Voir sur Instagram</a>{% endif %}
+          {% elif e.pret %}
+            <form method="post" action="/taches/{{ post.id }}/publie">
+              <input type="hidden" name="retour" value="/calendrier/tache/{{ e.racine.id }}?semaine={{ lundi }}">
+              <button class="btn btn-secondaire">{{ icone("check-circle") }}<span>Marquer comme posté</span></button>
+            </form>
+          {% else %}
+            <button class="btn btn-secondaire" disabled>{{ icone("check-circle") }}<span>Marquer comme posté</span></button>
+          {% endif %}
+          {% if e.pret and publication_automatique %}
+            <p class="aide">Publication automatique sur Instagram le {{ e.quand|date_fr }}{% if post.contenu.etiquette_ia %}, avec l'étiquette IA{% endif %}. Vous pouvez aussi le publier vous-même avant.</p>
+          {% endif %}
+          {% if not e.pret and not e.publication %}
+            <p class="aide">{% if e.etat == "Échec de publication" %}La publication automatique a échoué : voir le détail ci-dessous, puis la relancer depuis <a href="/echecs">Tâches en échec</a>, ou publier à la main.{% else %}Disponible une fois le contenu validé.{% if e.etat == "À valider" %} <a href="/a-valider">Le valider maintenant</a>{% endif %}{% endif %}</p>
+          {% endif %}
+        </section>
+
+        {% if e.publication %}
+        <section>
+          <h3>Statistiques</h3>
+          {% set st = detail.statistiques %}
+          {% if st %}
+            <dl class="stats-cles stats-post">
+              {% for c in detail.chiffres if st[c] is not none %}<div><dt>{{ detail.libelles[c] }}</dt><dd>{{ st[c] }}</dd></div>{% endfor %}
+            </dl>
+            <p class="aide">Relevé {{ st.releve_le|date_fr }}.</p>
+          {% else %}
+            <p class="aide">Pas encore de chiffres : ils sont relevés automatiquement depuis Instagram toutes les 12 h.</p>
+          {% endif %}
+        </section>
+        {% endif %}
+
+        <section>
+          <h3>Brief</h3>
+          <details class="brief-replie">
+            <summary><span class="brief-apercu">{{ e.brief.contenu.objectif }}</span><span class="brief-ouvrir">Lire le brief complet</span></summary>
+            <p class="pre">{{ e.brief.contenu.objectif }}</p>
+          </details>
+          <p class="meta">{{ NOMS_TYPES[e.brief.type] }} · {{ e.brief.contenu.format }}{% if e.brief.contenu.modele %} · {{ e.brief.contenu.modele }}{% endif %}{% if e.brief.contenu.effort %} · effort {{ e.brief.contenu.effort }}{% endif %}{% if e.brief.contenu.rushs %} · {{ e.brief.contenu.rushs|length }} rush(s){% endif %}</p>
+          {% if detail.conception %}
+          <details class="extrait-rejete"><summary>{{ "Script et conception du reel" if detail.reel else "Conception du visuel" }}</summary><p class="extrait pre">{{ detail.conception }}</p></details>
+          {% endif %}
+        </section>
+
+        <section>
+          <h3>Travail des agents</h3>
+          <ol class="chronologie">
+          {% for t in e.lignee %}
+            <li class="etape-{{ t.statut }}">
+              <div class="ligne-entete"><strong>{{ ETAPES.get(t.type, NOMS_TYPES.get(t.type, t.type)) }}</strong>{{ statut(t.statut) }}</div>
+              <p class="meta">{{ NOMS_AGENTS.get(t.agent, t.agent) }} · {{ t.cree_le|date_fr }}{% if t.contenu.modele %} · {{ t.contenu.modele }}{% endif %}{% if t.contenu.effort %} · effort {{ t.contenu.effort }}{% endif %}{% if t.tentatives > 1 %} · {{ t.tentatives }} tentatives{% endif %}</p>
+              {% if t.type == "corrections" %}<ul class="problemes">{% for p in t.contenu.problemes %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+              {% if t.type == "lecon" %}<p class="extrait">{{ t.contenu.regle }}</p>{% endif %}
+              {% if t.commentaire %}<p class="commentaire">{{ icone("info") }}<span>{{ t.commentaire }}</span></p>{% endif %}
+              {% if t.erreur and t.statut != "terminé" %}<p class="commentaire erreur">{{ icone("warning-circle") }}<span>{{ t.erreur }}</span></p>{% endif %}
+            </li>
+          {% endfor %}
+          </ol>
+        </section>
+      </div>
+    </div>
+  {% else %}
+    {% set t = detail.tache %}
+    <header class="modale-entete">
+      <div>
+        <h2 id="modale-titre">{{ NOMS_TYPES.get(t.type, t.type) }}</h2>
+        <div class="ligne-entete">{{ statut(t.statut) }}<span class="meta">{{ NOMS_AGENTS.get(t.agent, t.agent) }}</span><span class="meta">{{ icone("calendar-blank") }}{{ t.cree_le|date_fr }}</span><span class="meta identifiant">#{{ t.id }}</span></div>
+      </div>
+      <a href="{{ fermer }}" class="btn-icone" aria-label="Fermer">{{ icone("x") }}</a>
+    </header>
+    <div class="modale-infos">
+      <dl class="analyse">
+        {% for cle, valeur in t.contenu.items() if valeur not in (None, "", []) %}
+          <dt>{{ cle|replace("_", " ")|capitalize }}</dt>
+          <dd>{% if valeur is mapping or (valeur is iterable and valeur is not string) %}<code>{{ valeur|tojson }}</code>{% else %}{{ valeur }}{% endif %}</dd>
+        {% endfor %}
+        <dt>Mise à jour</dt><dd>{{ t.maj_le|date_fr }}{% if t.tentatives %} · {{ t.tentatives }} tentative(s){% endif %}</dd>
+      </dl>
+      {% if t.commentaire %}<p class="commentaire">{{ icone("info") }}<span>{{ t.commentaire }}</span></p>{% endif %}
+      {% if t.erreur %}<p class="commentaire erreur">{{ icone("warning-circle") }}<span>{{ t.erreur }}</span></p>{% endif %}
+      {% if t.type == "demande_veille" %}<a href="/veille" class="btn btn-secondaire">Voir le rapport de veille</a>{% endif %}
+      {% if t.statut == "échec" %}<a href="/echecs" class="btn btn-secondaire">Voir les tâches en échec</a>{% endif %}
+    </div>
+  {% endif %}
+  </article>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% block titre %}Direction artistique{% endblock %}
+{% block sous_titre %}Le style que suivent tous les visuels, tiré de vos réalisations de référence.{% endblock %}
+{% block contenu %}
+{% if analyse_en_cours %}<div class="alerte-bloc alerte-info">{{ icone("info") }}<span>Analyse de vos références en cours : rechargez la page dans une ou deux minutes.</span></div>{% endif %}
+
+{% for d in proposees %}
+  <article class="carte revue" style="--i: {{ loop.index0 }}">
+    <header class="revue-entete">
+      <span class="statut statut-attente">Proposition à valider</span>
+      <span class="meta">{{ d.references|length }} référence(s) analysée(s) · {{ d.cree_le|date_fr }}</span>
+    </header>
+    <p class="revue-texte">{{ d.resume }}</p>
+    <form method="post" action="/direction/{{ d.id }}/valider" class="champ regle">
+      <label for="direction-{{ d.id }}">Direction artistique <span class="facultatif">modifiable avant validation</span></label>
+      <textarea id="direction-{{ d.id }}" name="texte" rows="18" class="texte-long">{{ d.texte }}</textarea>
+      <div class="revue-actions">
+        <button class="btn btn-primaire">{{ icone("check") }}<span>Valider</span></button>
+        <button class="btn btn-secondaire" formaction="/direction/{{ d.id }}/refuser">{{ icone("x") }}<span>Refuser</span></button>
+      </div>
+    </form>
+  </article>
+{% endfor %}
+
+<h2 class="section-titre">Direction en vigueur</h2>
+{% if active %}
+  <article class="carte revue">
+    <p class="meta">Validée le {{ active.decide_le|date_fr }} · {{ active.references|length }} référence(s)</p>
+    <div class="revue-texte">{{ active.texte }}</div>
+  </article>
+{% elif not proposees %}
+  {{ etat_vide("sparkle", "Aucune direction artistique", "Déposez vos meilleures réalisations dans Références, puis lancez l'analyse.", "/references", "Aller aux références") }}
+{% else %}
+  <p class="aide">Aucune direction validée pour l'instant.</p>
+{% endif %}
+{% endblock %}

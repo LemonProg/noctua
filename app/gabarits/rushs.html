@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% block titre %}Rushs{% endblock %}
+{% block sous_titre %}Vos photos et vidéos : la matière première des contenus.{% endblock %}
+{% block contenu %}
+<form method="post" action="/rushs" enctype="multipart/form-data" hx-boost="false" class="depot">
+  <label class="depot-zone">
+    <input type="file" name="fichiers" accept="image/*,video/*" multiple required data-envoi-auto>
+    <span class="depot-icone">{{ icone("upload-simple") }}</span>
+    <span class="depot-titre">Ajouter des photos ou vidéos</span>
+    <span class="aide">Touchez pour choisir, plusieurs fichiers possibles.</span>
+  </label>
+</form>
+{% if not rushs %}
+  {{ etat_vide("images", "Aucun rush", "Ajoutez vos photos et vidéos pour que les agents partent de votre contenu réel.") }}
+{% else %}
+  <p class="compte">{{ rushs|length }} rush{{ "s" if rushs|length > 1 }}</p>
+  <div class="galerie">
+  {% for r in rushs %}
+    <article class="tuile" style="--i: {{ loop.index0 }}">
+      {% with medias = [r] %}{% include "_medias.html" %}{% endwith %}
+      <div class="tuile-pied">
+        <span class="tuile-nom" title="{{ r.nom_original }}">{{ r.nom_original }}</span>
+        <form method="post" action="/rushs/{{ r.id }}/ecarter">
+          <button class="btn-icone btn-icone-danger" title="Ne pas utiliser" aria-label="Ne pas utiliser">{{ icone("trash") }}</button>
+        </form>
+      </div>
+    </article>
+  {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

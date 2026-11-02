@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% block titre %}Références{% endblock %}
+{% block sous_titre %}Vos meilleures réalisations : le graphiste s'en inspire pour comprendre le rendu attendu.{% endblock %}
+{% block actions %}{% if references %}<form method="post" action="/references/analyser"><button class="btn btn-primaire">{{ icone("sparkle") }}<span>Analyser mes références</span></button></form>{% endif %}{% endblock %}
+{% block contenu %}
+<form method="post" action="/references" enctype="multipart/form-data" hx-boost="false" class="depot">
+  <label class="depot-zone">
+    <input type="file" name="fichiers" accept="image/*" multiple required data-envoi-auto>
+    <span class="depot-icone">{{ icone("upload-simple") }}</span>
+    <span class="depot-titre">Ajouter des posts de référence</span>
+    <span class="aide">Captures ou exports de vos meilleurs posts Instagram (idéalement 10 à 20). Jamais publiés tels quels.</span>
+  </label>
+</form>
+{% if not references %}
+  {{ etat_vide("image-square", "Aucune référence", "Déposez vos meilleures réalisations : elles serviront à définir la direction artistique de l'agence.") }}
+{% else %}
+  <p class="compte">{{ references|length }} référence{{ "s" if references|length > 1 }}</p>
+  <div class="galerie">
+  {% for r in references %}
+    <article class="tuile" style="--i: {{ loop.index0 }}">
+      <a href="/references/{{ r.id }}/image" target="_blank" hx-boost="false" class="lien-media"><img src="/references/{{ r.id }}/image" alt="{{ r.nom_original }}" loading="lazy"></a>
+      <div class="tuile-pied">
+        <span class="tuile-nom" title="{{ r.nom_original }}">{{ r.nom_original }}</span>
+        <form method="post" action="/references/{{ r.id }}/retirer">
+          <button class="btn-icone btn-icone-danger" title="Retirer" aria-label="Retirer">{{ icone("trash") }}</button>
+        </form>
+      </div>
+    </article>
+  {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% block titre %}Sons{% endblock %}
+{% block sous_titre %}Les bruitages des reels : de vrais enregistrements libres de droits (CC0, Openverse).{% endblock %}
+{% block contenu %}
+{% if not categories and not ecartes %}
+  {{ etat_vide("speaker-high", "Banque vide", "Lancez « agence sons importer » sur le serveur. En attendant, les reels utilisent des sons synthétisés.") }}
+{% else %}
+  <p class="compte">{{ categories.values()|map("length")|sum }} sons utilisables. Écoutez-les et écartez ceux qui ne conviennent pas : le motion designer ne s'en servira plus.</p>
+  {% for categorie, sons in categories.items() %}
+  <section class="carte bloc sons-categorie">
+    <header class="bloc-entete">
+      <h2>{{ icone("speaker-high") }}{{ categorie|capitalize }}<span class="compteur">{{ sons|length }}</span></h2>
+      <span class="meta">{{ usages.get(categorie, "") }}</span>
+    </header>
+    {% for son in sons %}
+    <div class="son-ligne">
+      <div class="son-infos">
+        <strong title="{{ son.titre }}">{{ son.titre }}</strong>
+        <span class="meta">{{ son.duree|round(1) }} s · <a href="{{ son.page }}" target="_blank" rel="noopener">{{ son.auteur or "Freesound" }}</a> · CC0</span>
+      </div>
+      <audio controls preload="none" src="/sons/{{ son.id }}/audio"></audio>
+      <form method="post" action="/sons/{{ son.id }}/ecarter">
+        <button class="btn-icone btn-icone-danger" title="Ne pas utiliser" aria-label="Ne pas utiliser {{ son.titre }}">{{ icone("trash") }}</button>
+      </form>
+    </div>
+    {% endfor %}
+  </section>
+  {% endfor %}
+  {% if ecartes %}
+  <section class="carte bloc sons-categorie">
+    <header class="bloc-entete"><h2>{{ icone("trash") }}Écartés<span class="compteur">{{ ecartes|length }}</span></h2></header>
+    {% for e in ecartes %}
+    <div class="son-ligne">
+      <div class="son-infos">
+        <strong>{{ e.son.titre }}</strong>
+        <span class="meta">{{ e.son.categorie }} · suppression le {{ e.suppression|date_fr }}</span>
+      </div>
+      <form method="post" action="/sons/{{ e.son.id }}/restaurer">
+        <button class="btn btn-secondaire btn-petit">{{ icone("arrow-counter-clockwise") }}<span>Restaurer</span></button>
+      </form>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, statut %}
+{% set JOURS = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."] %}
+{% block titre %}Aperçu du profil{% endblock %}
+{% block sous_titre %}Les posts prévus prennent place devant vos derniers posts, comme sur Instagram.{% endblock %}
+{% block contenu %}
+{% macro type_icone(type) %}{% if type == "reel" %}{{ icone("film-strip") }}{% elif type == "carrousel" %}{{ icone("images") }}{% endif %}{% endmacro %}
+
+<div class="profil">
+  <header class="profil-entete">
+    <span class="profil-avatar"><img src="/statique/icones/icone-192.png" alt=""></span>
+    <div class="profil-identite">
+      <strong>{{ nom_agence }}</strong>
+      <div class="profil-chiffres">
+        <span><b>{{ nb_publies }}</b> publications</span>
+        <span><b>{{ nombre(abonnes.nombre) if abonnes else "—" }}</b> abonnés</span>
+        {% if prevus %}<span class="profil-prevus"><b>{{ prevus|length }}</b> prévu{{ "s" if prevus|length > 1 }}</span>{% endif %}
+      </div>
+    </div>
+  </header>
+
+  {% if prevus or publies %}
+  <div class="grille-instagram">
+    {% for p in prevus %}{% set t = p.tache %}{% set v = p.medias %}
+    <a href="{{ '/a-valider#post-' ~ t.id if t.statut == 'à_valider' else '/calendrier/tache/' ~ t.id }}"
+       class="case-grille prevue {{ 's-' ~ t.statut }}{{ ' choisie' if choisi == t.id }}" id="grille-{{ t.id }}"
+       title="{{ (t.contenu.texte or '')|truncate(120) }}">
+      {% if v and v[0].type in ("image", "vidéo") %}<img src="/media/{{ v[0].id }}/vignette" alt="" loading="lazy">{% else %}<span class="case-vide">{{ icone("image-square") }}</span>{% endif %}
+      <span class="case-type">{{ type_icone("reel" if v and v[0].type == "vidéo" else ("carrousel" if v|length > 1 else "image")) }}</span>
+      <span class="case-prevue">{{ "À valider" if t.statut == "à_valider" else "Prêt" }} · {{ JOURS[p.quand.astimezone(fuseau).weekday()] }} {{ p.quand.astimezone(fuseau).strftime("%d/%m") }}</span>
+    </a>
+    {% endfor %}
+    {% for p in publies %}
+    {% set lien = p.lien|lien_sur %}
+    <{{ "a" if lien else "div" }} {% if lien %}href="{{ lien }}" target="_blank" rel="noopener" hx-boost="false"{% endif %} class="case-grille publiee">
+      {% if p.medias and p.medias[0].type in ("image", "vidéo") %}<img src="/media/{{ p.medias[0].id }}/vignette" alt="" loading="lazy">
+      {% elif p.apercu|lien_sur %}<img src="{{ p.apercu|lien_sur }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+      {% else %}<span class="case-vide">{{ icone("image-square") }}</span>{% endif %}
+      <span class="case-type">{{ type_icone(p.type) }}</span>
+      {% if p.vues is not none %}<span class="case-vues">{{ nombre(p.vues) }} vues</span>{% endif %}
+    </{{ "a" if lien else "div" }}>
+    {% endfor %}
+  </div>
+  <p class="aide grille-aide">Encadrés en pointillés : les posts prévus, du plus tardif (en haut à gauche) au plus proche. Touchez un post prévu pour le valider ou le revoir.</p>
+  {% else %}
+  <p class="vide-court">Aucun post publié ni prévu pour l'instant.</p>
+  {% endif %}
+</div>
+{% endblock %}

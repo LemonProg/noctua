@@ -1,0 +1,5 @@
+{% for media in medias %}
+  {% if media.type == "image" %}<a href="/media/{{ media.id }}" target="_blank" hx-boost="false" class="lien-media"><img src="/media/{{ media.id }}/vignette" alt="{{ media.nom_original }}" loading="lazy"></a>
+  {% elif media.type == "vidéo" %}<video src="/media/{{ media.id }}" poster="/media/{{ media.id }}/vignette" controls preload="none" playsinline class="video-reel"></video>
+  {% else %}<span class="fichier">{{ media.nom_original }}</span>{% endif %}
+{% endfor %}

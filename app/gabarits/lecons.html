@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide, nom_agent %}
+{% block titre %}Leçons{% endblock %}
+{% block sous_titre %}Ce que l'agence retient de chaque contenu rejeté. Validées, elles s'appliquent à tous les agents.{% endblock %}
+{% block contenu %}
+<h2 class="section-titre">À valider{% if proposees %} <span class="compteur">{{ proposees|length }}</span>{% endif %}</h2>
+{% if not proposees %}
+  {{ etat_vide("sparkle", "Aucune leçon en attente", "Chaque contenu refusé ou écarté est analysé ; la leçon proposée apparaîtra ici.") }}
+{% endif %}
+<div class="liste">
+{% for p in proposees %}
+  {% set l = p.lecon %}
+  <article class="carte revue" style="--i: {{ loop.index0 }}">
+    <header class="revue-entete">
+      <span class="statut statut-attente">{{ {"refus_humain": "Contenu refusé", "ne_pas_utiliser": "Contenu écarté", "relecteur": "Corrigé par le relecteur"}[l.origine_rejet] }}</span>
+      {% for agent in l.agents_concernes %}<span class="badge">{{ nom_agent(agent) }}</span>{% endfor %}
+      <span class="meta identifiant">Leçon #{{ l.id }}</span>
+    </header>
+    {% if p.rappel_de %}<div class="alerte-bloc alerte-info">{{ icone("info") }}<span>Proche de la leçon #{{ p.rappel_de }} déjà validée : vous pouvez la refuser si elle fait doublon.</span></div>{% endif %}
+    <dl class="analyse">
+      <dt>Erreur constatée</dt><dd>{{ l.erreur }}</dd>
+      <dt>Cause probable</dt><dd>{{ l.cause }}</dd>
+      {% if p.rejet.commentaire %}<dt>Votre commentaire</dt><dd>{{ p.rejet.commentaire }}</dd>{% endif %}
+    </dl>
+    {% if p.rejet.contenu and p.rejet.contenu.texte %}
+      <details class="extrait-rejete"><summary>Voir le contenu rejeté</summary><p class="extrait">{{ p.rejet.contenu.texte }}</p></details>
+    {% endif %}
+    <form method="post" action="/lecons/{{ l.id }}/valider" class="champ regle">
+      <label for="regle-{{ l.id }}">Règle proposée <span class="facultatif">modifiable avant validation</span></label>
+      <textarea id="regle-{{ l.id }}" name="regle" rows="3" maxlength="300">{{ l.regle }}</textarea>
+      <div class="revue-actions">
+        <button class="btn btn-primaire">{{ icone("check") }}<span>Valider la leçon</span></button>
+        <button class="btn btn-secondaire" formaction="/lecons/{{ l.id }}/refuser">{{ icone("x") }}<span>Refuser</span></button>
+      </div>
+    </form>
+  </article>
+{% endfor %}
+</div>
+
+<h2 class="section-titre">Leçons actives{% if validees %} <span class="compteur">{{ validees|length }}</span>{% endif %}</h2>
+{% if not validees %}
+  <p class="aide">Aucune leçon validée pour l'instant.</p>
+{% else %}
+<div class="carte tableau">
+{% for l in validees %}
+  <div class="ligne" style="--i: {{ loop.index0 }}">
+    <div class="ligne-entete">
+      <span class="meta identifiant-gauche">#{{ l.id }}</span>
+      <p class="regle-active">{{ l.regle }}</p>
+      <form method="post" action="/lecons/{{ l.id }}/retirer" class="pousser"><button class="btn btn-fantome btn-petit">Retirer</button></form>
+    </div>
+    <p class="meta">{% for agent in l.agents_concernes %}{{ nom_agent(agent) }}{% if not loop.last %}, {% endif %}{% endfor %} · validée le {{ l.decide_le|date_fr }}</p>
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

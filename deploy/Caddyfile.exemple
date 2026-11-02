@@ -1,0 +1,14 @@
+# Caddy : HTTPS automatique devant l'interface (qui écoute sur 127.0.0.1:8000, voir HOTE_WEB et PORT_WEB dans .env).
+# installer.sh remplace DOMAINE par le nom fourni (variable DOMAINE).
+DOMAINE {
+	encode zstd gzip
+	# HTTPS imposé au navigateur pendant un an ; envois limités à 2 Go (rushs vidéo).
+	header Strict-Transport-Security "max-age=31536000"
+	header -Server
+	request_body {
+		max_size 2GB
+	}
+	reverse_proxy 127.0.0.1:8000 {
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

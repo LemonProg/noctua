@@ -1,0 +1,14 @@
+[Unit]
+Description=Agence IA - purge de la corbeille et des contenus publiés, vérification du disque
+
+[Service]
+Type=oneshot
+User=agence
+Group=agence
+WorkingDirectory=/srv/agence-ia/app
+ExecStart=/srv/agence-ia/app/.venv/bin/agence purge
+Environment=PATH=/srv/agence-ia/.local/bin:/usr/local/bin:/usr/bin:/bin
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/agence-ia /var/tmp/agence-ia

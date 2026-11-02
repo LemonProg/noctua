@@ -1,0 +1,25 @@
+[Unit]
+Description=Agence IA - worker (agents et file de tâches)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agence
+Group=agence
+WorkingDirectory=/srv/agence-ia/app
+ExecStart=/srv/agence-ia/app/.venv/bin/python -m noyau.worker
+# Claude Code est installé pour l'utilisateur agence dans ~/.local/bin.
+Environment=PATH=/srv/agence-ia/.local/bin:/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=10
+# Laisse le temps à un rendu vidéo en cours de se terminer à l'arrêt.
+TimeoutStopSec=600
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/agence-ia /var/tmp/agence-ia
+
+[Install]
+WantedBy=multi-user.target

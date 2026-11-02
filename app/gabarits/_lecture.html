@@ -1,0 +1,20 @@
+{# Rapports lisibles : puces courtes, détail complet replié (les agents gardent le texte complet). #}
+{% macro puces(elements, classe="") -%}
+<ul class="puces {{ classe }}">
+  {% for texte in elements %}{% set p = texte|point %}
+    <li>{% if p.detail %}<details><summary>{{ p.titre }}</summary><p>{{ p.detail }}</p></details>{% else %}<span>{{ p.titre }}</span>{% endif %}</li>
+  {% endfor %}
+</ul>
+{%- endmacro %}
+
+{% macro synthese(texte, visibles=3) -%}
+{% set liste = texte|phrases %}
+<ul class="puces synthese">
+  {% for p in liste[:visibles] %}<li><span>{{ p }}</span></li>{% endfor %}
+</ul>
+{% if liste|length > visibles %}
+<details class="suite"><summary>Lire la suite ({{ liste|length - visibles }})</summary>
+  <ul class="puces synthese">{% for p in liste[visibles:] %}<li><span>{{ p }}</span></li>{% endfor %}</ul>
+</details>
+{% endif %}
+{%- endmacro %}

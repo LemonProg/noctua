@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, statut, etat_vide %}
+{% block titre %}Recherche{% endblock %}
+{% block sous_titre %}Retrouvez un post par un mot de sa légende, qu'il vienne de l'agence ou d'Instagram.{% endblock %}
+{% block contenu %}
+<form method="get" action="/recherche" class="recherche-grande" role="search">
+  {{ icone("loupe") }}
+  <input type="search" name="q" value="{{ q }}" placeholder="Ex. menu, nouveauté, coulisses…" aria-label="Rechercher dans les légendes" autofocus>
+  <button class="btn btn-primaire">Rechercher</button>
+</form>
+
+{% if trop_court %}
+  <p class="vide-court">Tapez au moins deux lettres.</p>
+{% elif mots and not resultats %}
+  {{ etat_vide("loupe", "Aucun résultat", "Aucune légende ne contient « " ~ q ~ " ». Essayez un autre mot, sans accent si besoin.") }}
+{% elif resultats %}
+  <p class="aide recherche-compte">{{ resultats|length }} résultat{{ "s" if resultats|length > 1 }}{% if resultats|length == 60 %} (les 60 plus récents){% endif %}</p>
+  <ol class="resultats">
+  {% for r in resultats %}
+    {% if r.tache %}{% set t = r.tache %}
+    <li><a href="{{ '/a-valider#post-' ~ t.id if t.statut == 'à_valider' else '/calendrier/tache/' ~ t.id }}" class="carte resultat">
+      <span class="mini-vignette">{% if r.medias and r.medias[0].type in ("image", "vidéo") %}<img src="/media/{{ r.medias[0].id }}/vignette" alt="" loading="lazy">{% else %}{{ icone("pencil-simple-line") }}{% endif %}</span>
+      <span class="resultat-corps">
+        <span class="resultat-meta">{% if r.publication %}<span class="statut statut-publie">Publié</span>{% else %}{{ statut(t.statut) }}{% endif %}
+          <span class="meta">Post de l'agence · {{ r.quand|date_fr }}</span><span class="meta identifiant">#{{ t.id }}</span></span>
+        <span class="resultat-extrait">{{ r.extrait }}</span>
+      </span>
+    </a></li>
+    {% else %}{% set l = r.instagram %}{% set lien = l.lien|lien_sur %}
+    <li><{{ "a" if lien else "div" }} {% if lien %}href="{{ lien }}" target="_blank" rel="noopener" hx-boost="false"{% endif %} class="carte resultat">
+      <span class="mini-vignette">{% if l.apercu|lien_sur %}<img src="{{ l.apercu|lien_sur }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}{{ icone("image-square") }}{% endif %}</span>
+      <span class="resultat-corps">
+        <span class="resultat-meta"><span class="statut statut-neutre">Instagram</span>
+          <span class="meta">{{ l.publie_le|date_fr }}{% if l.vues is not none %} · {{ l.vues }} vues{% endif %}</span></span>
+        <span class="resultat-extrait">{{ r.extrait }}</span>
+      </span>
+    </{{ "a" if lien else "div" }}></li>
+    {% endif %}
+  {% endfor %}
+  </ol>
+{% endif %}
+{% endblock %}

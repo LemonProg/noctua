@@ -1,0 +1,33 @@
+# Secrets
+.env
+
+# Charte de votre marque (copiée depuis charte.exemple.md)
+charte.md
+
+# Données locales (base, contenus, fichiers temporaires)
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+donnees/
+tmp/
+
+# Python
+__pycache__/
+*.pyc
+.venv
+.pytest_cache/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Généré depuis la base à partir des leçons validées (source de vérité : table lecons)
+lecons.md
+direction_artistique.md
+.coverage
+
+# Polices de la marque (licences souvent incompatibles avec la redistribution) — copiées sur le serveur, jamais versionnées
+app/polices-marque/
+
+# Dépendances de rendu vidéo (réinstallées par `npm ci` dans video/)
+video/node_modules/

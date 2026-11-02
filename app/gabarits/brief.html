@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone %}
+{% block titre %}Nouveau brief{% endblock %}
+{% block sous_titre %}Décrivez le contenu voulu : l'agent rédacteur s'en charge.{% endblock %}
+{% block contenu %}
+{% if erreurs %}<div class="alerte-bloc alerte-danger">{{ icone("x-circle") }}<span class="pre">{{ erreurs }}</span></div>{% endif %}
+<form method="post" action="/brief" class="carte formulaire">
+  <fieldset class="champ">
+    <legend>Type de contenu</legend>
+    <div class="segments">
+      <label class="segment"><input type="radio" name="type_brief" value="visuel" {% if valeurs.type_brief != "texte" %}checked{% endif %}><span>Visuel + texte</span></label>
+      <label class="segment"><input type="radio" name="type_brief" value="texte" {% if valeurs.type_brief == "texte" %}checked{% endif %}><span>Photos + texte</span></label>
+      <label class="segment"><input type="radio" name="type_brief" value="video" {% if valeurs.type_brief == "video" %}checked{% endif %}><span>Reel vidéo</span></label>
+    </div>
+    <p class="aide">Visuel : le graphiste compose une image ou un carrousel selon la direction artistique, avec vos rushs tels quels s'il y en a. Photos : vos rushs publiés tels quels (au moins un). Reel : motion design créé de A à Z (typographie animée, textes rythmés, bruitages synthétisés). Pas de post texte seul.</p>
+  </fieldset>
+  <div class="champ">
+    <label for="objectif">Objectif</label>
+    <textarea id="objectif" name="objectif" rows="3" required placeholder="Ex. faire connaître le Pack Présence auprès des restaurants de Toulon">{{ valeurs.objectif }}</textarea>
+  </div>
+  <div class="champs-ligne">
+    <div class="champ">
+      <label for="format">Format</label>
+      <input id="format" name="format" value="{{ valeurs.format }}" placeholder="Ex. post, carrousel, légende" required>
+    </div>
+    <div class="champ">
+      <label for="date_prevue">Publication prévue</label>
+      <input id="date_prevue" type="datetime-local" name="date_prevue" value="{{ valeurs.date_prevue }}" required>
+      <p class="aide">Heure de Paris.</p>
+    </div>
+  </div>
+  <fieldset class="champ">
+    <legend>Réseau</legend>
+    <div class="segments">
+      {% for r in reseaux %}
+        <label class="segment"><input type="radio" name="reseau" value="{{ r }}" {% if valeurs.reseau == r or (not valeurs.reseau and loop.first) %}checked{% endif %}><span>{{ {"instagram": "Instagram", "linkedin": "LinkedIn", "facebook": "Facebook", "tiktok": "TikTok", "x": "X"}[r] }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <fieldset class="champ">
+    <legend>Rushs à utiliser <span class="facultatif">facultatif pour un visuel</span></legend>
+    {% if not rushs %}
+      <p class="aide">Aucun rush pour l'instant. <a href="/rushs">Ajouter des photos ou vidéos</a>.</p>
+    {% else %}
+      <div class="galerie">
+      {% for r in rushs %}
+        <label class="tuile selectionnable">
+          <input type="checkbox" name="rushs" value="{{ r.id }}" {% if r.id in (valeurs.rushs or []) %}checked{% endif %}>
+          {% with medias = [r] %}{% include "_medias.html" %}{% endwith %}
+          <span class="coche">{{ icone("check") }}</span>
+          <span class="tuile-nom">{{ r.nom_original }}</span>
+        </label>
+      {% endfor %}
+      </div>
+    {% endif %}
+  </fieldset>
+  <div class="champ">
+    <label class="case"><input type="checkbox" name="tout_de_suite" value="oui"{% if valeurs.tout_de_suite %} checked{% endif %}><span>Produire tout de suite</span></label>
+    <p class="aide">Sinon, la production attend la nuit si la date de publication le permet : elle ménage votre abonnement Claude pendant la journée.</p>
+  </div>
+  <div class="formulaire-pied">
+    <button class="btn btn-primaire">{{ icone("sparkle") }}<span>Lancer la rédaction</span></button>
+  </div>
+</form>
+{% endblock %}

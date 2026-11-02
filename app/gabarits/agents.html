@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, statut, NOMS_TYPES, NOMS_AGENTS %}
+{% set LIBELLES_ETATS = {"erreur": "En erreur", "actif": "Au travail", "attente": "En attente", "nuit": "Prévu cette nuit", "repos": "Au repos"} %}
+{% set liste_etats = etats.values()|list %}
+{% block titre %}Les agents{% endblock %}
+{% block sous_titre %}Qui fait quoi dans la chaîne de production, et où en est chacun.{% endblock %}
+{% block largeur %}large{% endblock %}
+{% block actions %}
+  {% set nb_actifs = liste_etats|selectattr("etat", "equalto", "actif")|list|length %}
+  {% set nb_erreurs = liste_etats|selectattr("etat", "equalto", "erreur")|list|length %}
+  {% if nb_erreurs %}<a href="/echecs" class="etat-agence pause erreur">{{ icone("warning-circle") }}{{ nb_erreurs }} agent{{ "s" if nb_erreurs > 1 }} en erreur</a>{% endif %}
+  {% set nb_nuit = liste_etats|selectattr("etat", "equalto", "nuit")|list|length %}
+  <span class="etat-agence {{ 'travail' if nb_actifs else 'repos' }}">{{ icone("arrow-counter-clockwise") }}{{ nb_actifs }} au travail{% if nb_nuit %} · {{ nb_nuit }} prévu{{ "s" if nb_nuit > 1 }} cette nuit{% endif %}</span>
+{% endblock %}
+
+{% macro carte(e) %}{% set a = e.agent %}
+<a href="/agents/{{ a.id }}" class="agent etat-{{ e.etat }}{{ ' choisi' if choisi == a.id }}" title="{{ a.role }}">
+  <span class="agent-tete">
+    <span class="agent-avatar">{{ icone(a.icone) }}<i class="agent-pastille" aria-hidden="true"></i></span>
+    <span class="agent-identite"><strong>{{ a.nom }}</strong><span>{{ LIBELLES_ETATS[e.etat] }}</span></span>
+  </span>
+  <span class="agent-role">{{ a.role }}</span>
+  <span class="agent-maintenant">
+    {%- if e.etat == "erreur" %}{% set e_ = e.echecs[0].erreur|expliquer %}{{ e.echecs|length }} tâche{{ "s" if e.echecs|length > 1 }} en échec : {{ e_.explication if e_ else (e.echecs[0].erreur or "erreur inconnue")|truncate(70) }}
+    {%- elif e.etat == "actif" %}{% set t = e.en_cours[0] %}{{ NOMS_TYPES.get(t.type, t.type) }} #{{ t.id }}{% if t.pris_le %} · depuis {{ duree(maintenant - t.pris_le|en_date) }}{% endif %}
+    {%- elif e.etat in ("attente", "nuit") %}{{ e.a_faire|length }} {{ "prévue" ~ ("s" if e.a_faire|length > 1) ~ " cette nuit" if e.etat == "nuit" else "en attente" }}
+    {%- elif e.dernier_passage %}Dernier passage {{ e.dernier_passage|depuis }}
+    {%- else %}Pas encore sollicité{% endif -%}
+  </span>
+  <span class="agent-chiffres">
+    <span title="Tâches traitées ces 7 derniers jours"><b>{{ e.traitees_7j }}</b> en 7 j</span>
+    {% if e.reussite is not none %}<span title="Part des tâches réussies ces 7 derniers jours"><b>{{ e.reussite }} %</b> réussies</span>{% endif %}
+    <span class="agent-modele">{{ e.modele or ("Sans IA" if a.id == "agent_publication" else "—") }}</span>
+  </span>
+  {% if e.part_jetons %}<span class="agent-jauge" title="Part de l'abonnement Claude consommée sur 7 jours : {{ nombre(e.part_jetons) }} %"><i style="width: {{ [e.part_jetons, 2]|max }}%"></i></span>{% endif %}
+</a>
+{% endmacro %}
+
+{% block contenu %}
+<div class="legende-etats" aria-label="Légende">
+  {% for cle, libelle in LIBELLES_ETATS.items() %}<span class="legende-etat etat-{{ cle }}"><i></i>{{ libelle }}</span>{% endfor %}
+  <span class="legende-etat legende-jauge"><i></i>Part de l'abonnement (7 j)</span>
+</div>
+
+{# La pyramide se rafraîchit seule toutes les 15 secondes. Le déclencheur est à part : posés sur la pyramide, ces
+   attributs seraient hérités par les liens des cartes (la page entière serait remplacée par la pyramide). #}
+<span hx-get="{{ request.url.path }}" hx-trigger="every 15s" hx-select="#pyramide" hx-target="#pyramide" hx-swap="outerHTML" hidden></span>
+<section class="pyramide" id="pyramide">
+  {% for niveau in range(NIVEAUX|length) %}
+    {% set etage = AGENTS|selectattr("niveau", "equalto", niveau)|list %}
+    {% if not loop.first %}
+      {% set xs = centres(etage|length) %}
+      <span></span>
+      <svg class="liaison" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M50,0 V20 M{{ xs[0] }},20 H{{ xs[-1] }}" class="liaison-tronc"/>
+        {% for a in etage %}{% set e = etats[a.id] %}
+          <path d="M{{ xs[loop.index0] }},20 V40" class="liaison-branche {{ e.etat }}"/>
+        {% endfor %}
+      </svg>
+    {% endif %}
+    <span class="etage-nom">{{ NIVEAUX[niveau] }}</span>
+    <div class="etage etage-{{ niveau }}" style="--cartes: {{ etage|length }}">
+      {% for a in etage %}{{ carte(etats[a.id]) }}{% endfor %}
+    </div>
+  {% endfor %}
+</section>
+
+{% macro lien_tache(t) -%}
+{%- if t.agent in AGENTS|map(attribute="id")|list %}/agents/{{ t.agent }}?tache={{ t.id }}#tache-{{ t.id }}{% elif t.type == "lecon" %}/lecons{% else %}/a-valider{% endif -%}
+{%- endmacro %}
+
+{% if choisi %}{% set e = etats[choisi] %}{% set a = e.agent %}
+{# Fenêtre de l'agent : la pyramide reste derrière, le voile ou la croix la referment. #}
+<div class="modale modale-agent etat-{{ e.etat }}" role="dialog" aria-modal="true" aria-labelledby="modale-titre" id="detail">
+  <a href="/agents" class="modale-voile" aria-label="Fermer"></a>
+  <article class="modale-panneau">
+    <header class="modale-entete detail-agent-entete">
+      <span class="agent-avatar grand">{{ icone(a.icone) }}<i class="agent-pastille"></i></span>
+      <div>
+        <h2 id="modale-titre">{{ a.nom }} <span class="etat-texte">{{ LIBELLES_ETATS[e.etat] }}</span></h2>
+        <p>{{ a.role }}.</p>
+      </div>
+      <a href="/agents" class="btn-icone" aria-label="Fermer">{{ icone("x") }}</a>
+    </header>
+    <div class="modale-agent-corps">
+      <div class="detail-agent-flux">
+        <div><span>Reçoit</span>{{ a.recoit }}</div>
+        <span class="fleche" aria-hidden="true">→</span>
+        <div><span>Produit</span>{{ a.produit }}</div>
+      </div>
+      <dl class="detail-agent-chiffres">
+        <div><dt>Traitées en 7 j</dt><dd>{{ e.traitees_7j }}</dd></div>
+        <div><dt>Réussite</dt><dd>{{ (e.reussite ~ " %") if e.reussite is not none else "—" }}</dd></div>
+        <div><dt>Durée moyenne</dt><dd>{{ duree(e.duree_moyenne) }}</dd></div>
+        <div><dt>Abonnement (7 j)</dt><dd>{{ (nombre(e.part_jetons) ~ " %") if e.part_jetons else "—" }}</dd></div>
+        <div><dt>Modèle</dt><dd>{{ e.modele or ("Sans IA" if a.id == "agent_publication" else "—") }}</dd></div>
+      </dl>
+
+      {% set actives = historique|selectattr("active")|list %}
+      {% set passees = historique|rejectattr("active")|list %}
+      {% macro tache_detaillee(ligne) %}{% set t = ligne.tache %}
+      <li id="tache-{{ t.id }}">
+        <details class="tache-agent s-{{ t.statut }}"{% if ligne.active or ouverte == t.id %} open{% endif %}>
+          <summary>
+            <span class="tache-agent-point" aria-hidden="true"></span>
+            <span class="tache-agent-titre"><strong>{{ NOMS_TYPES.get(t.type, t.type) }}</strong><span class="numero">#{{ t.id }}</span>
+              <span class="tache-agent-resume">{{ (t.contenu.objectif or t.contenu.texte or t.contenu.regle or t.contenu.erreur or "")|truncate(90) }}</span></span>
+            <span class="tache-agent-meta">
+              {% if t.creneau != "jour" %}<span class="statut statut-nuit">Nuit</span>{% endif %}
+              {{ statut(t.statut) }}
+              <span class="historique-quand">{% if t.statut == "en_cours" and t.pris_le %}depuis {{ duree(maintenant - t.pris_le|en_date) }}{% else %}{{ t.maj_le|en_date|depuis }}{% endif %}</span>
+            </span>
+            {{ icone("caret-right", "tache-agent-chevron") }}
+          </summary>
+          <div class="tache-agent-detail">
+            {% if t.statut == "échec" %}{% set e_ = t.erreur|expliquer %}
+            <div class="erreur-expliquee">
+              <p class="erreur-titre">{{ icone("warning-circle") }}<strong>{{ e_.explication if e_ else "La tâche a échoué." }}</strong></p>
+              {% if e_ %}<p class="erreur-conseil">{{ e_.conseil }}</p>{% endif %}
+              <code class="erreur-brute">{{ t.erreur or "Aucun message d'erreur." }}</code>
+              <form method="post" action="/taches/{{ t.id }}/relancer">
+                <input type="hidden" name="retour" value="/agents/{{ t.agent }}">
+                <button class="btn btn-primaire btn-petit">{{ icone("arrow-counter-clockwise") }}Relancer la tâche</button>
+              </form>
+            </div>
+            {% endif %}
+            {% if t.commentaire %}<p class="historique-commentaire">« {{ t.commentaire }} »</p>{% endif %}
+            <dl class="tache-agent-champs">
+              <dt>Créée</dt><dd>{{ t.cree_le|date_fr }}</dd>
+              {% if t.pris_le %}<dt>Prise en charge</dt><dd>{{ t.pris_le|date_fr }}</dd>{% endif %}
+              <dt>Mise à jour</dt><dd>{{ t.maj_le|date_fr }}{% if ligne.duree %} · {{ duree(ligne.duree) }} de travail{% endif %}{% if t.tentatives > 1 %} · {{ t.tentatives }} tentatives{% endif %}</dd>
+              {% for cle, valeur in t.contenu.items() if valeur not in (None, "", []) %}
+                <dt>{{ cle|replace("_", " ")|capitalize }}</dt>
+                <dd>{% if valeur is mapping or (valeur is iterable and valeur is not string) %}<code class="valeur-longue">{{ valeur|tojson }}</code>
+                  {%- elif valeur is string and valeur|length > 240 %}<div class="valeur-longue">{{ valeur }}</div>
+                  {%- else %}{{ valeur }}{% endif %}</dd>
+              {% endfor %}
+            </dl>
+            {% if ligne.resultats %}<div class="historique-resultats"><span>A produit</span>
+              {% for r in ligne.resultats %}<a href="{{ lien_tache(r) }}" class="puce-etape s-{{ r.statut }}">{{ NOMS_TYPES.get(r.type, r.type) }} → {{ NOMS_AGENTS.get(r.agent, r.agent) }}</a>{% endfor %}</div>{% endif %}
+            {% if ligne.publication %}<a href="/calendrier/tache/{{ t.id }}" class="btn btn-secondaire btn-petit">{{ icone("calendar-blank") }}Voir la publication</a>{% endif %}
+          </div>
+        </details>
+      </li>
+      {% endmacro %}
+
+      <h3>En cours{% if actives %}<span class="compteur">{{ actives|length }}</span>{% endif %}</h3>
+      {% if actives %}
+        <ol class="taches-agent">{% for ligne in actives %}{{ tache_detaillee(ligne) }}{% endfor %}</ol>
+      {% else %}
+        <p class="vide-court">{{ icone("check-circle") }}Aucune tâche en cours.{% if e.dernier_passage %} Dernier passage {{ e.dernier_passage|depuis }}.{% endif %}</p>
+      {% endif %}
+
+      <h3>Historique</h3>
+      {% if passees %}
+        <ol class="taches-agent">{% for ligne in passees %}{{ tache_detaillee(ligne) }}{% endfor %}</ol>
+      {% else %}
+        <p class="vide-court">Aucune tâche terminée pour l'instant.</p>
+      {% endif %}
+    </div>
+  </article>
+</div>
+{% endif %}
+
+<section class="carte bloc chaines">
+  <header class="bloc-entete">
+    <h2>{{ icone("arrow-counter-clockwise") }}Chaînes de production récentes</h2>
+    <span class="aide">Chaque brief et tout ce qui en découle, de gauche à droite.</span>
+  </header>
+  {% if chaines %}
+  <ol class="liste-chaines">
+    {% for c in chaines %}
+    <li class="{{ 'chaine-erreur' if c.erreur }}">
+      <div class="chaine-titre">
+        <strong>{{ (c.racine.contenu.objectif or c.texte or NOMS_TYPES.get(c.racine.type))|truncate(90) }}</strong>
+        <span class="meta">{{ NOMS_TYPES.get(c.racine.type, c.racine.type) }} · {{ c.racine.cree_le|date_fr }}{% if c.versions > 1 %} · {{ c.versions }} versions{% endif %}</span>
+      </div>
+      <div class="chaine-etapes">
+        {% for t in c.etapes %}
+          {% if not loop.first %}<span class="chaine-fleche" aria-hidden="true"></span>{% endif %}
+          <a href="{{ lien_tache(t) }}" class="puce-etape s-{{ t.statut }}" title="{{ NOMS_TYPES.get(t.type, t.type) }} #{{ t.id }} · {{ t.statut|replace('_', ' ') }}">{{ NOMS_AGENTS.get(t.agent, t.agent)|replace("Orchestrateur marketing", "Orchestrateur")|replace("Analyse des erreurs", "Erreurs") }}</a>
+        {% endfor %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="vide-court">Aucune chaîne pour l'instant : la première partira au planning de dimanche.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone %}
+{% block titre %}Réglages{% endblock %}
+{% block sous_titre %}Ce qu'on ne consulte pas tous les jours.{% endblock %}
+{% block contenu %}
+<div class="reglages-grille">
+  {% for chemin, nom_icone, titre, texte, compteur, alerte in elements %}
+  <a href="{{ chemin }}" class="carte reglage" style="--i: {{ loop.index0 }}">
+    <span class="reglage-icone">{{ icone(nom_icone) }}</span>
+    <span>
+      <strong>{{ titre }}{% if compteur %}<span class="compteur{% if alerte %} compteur-alerte{% endif %}">{{ compteur }}</span>{% endif %}</strong>
+      <p>{{ texte }}</p>
+    </span>
+  </a>
+  {% endfor %}
+</div>
+<div class="reglages-pied">
+  <form method="post" action="/deconnecter-partout" title="Téléphone perdu, ordinateur prêté : les autres appareils devront se reconnecter.">
+    <button class="btn btn-fantome">{{ icone("x-circle") }}<span>Déconnecter les autres appareils</span></button>
+  </form>
+  <form method="post" action="/deconnexion">
+    <button class="btn btn-secondaire">{{ icone("sign-out") }}<span>Déconnexion</span></button>
+  </form>
+</div>
+{% endblock %}

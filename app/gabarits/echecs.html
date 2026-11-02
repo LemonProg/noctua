@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icone, etat_vide %}
+{% block titre %}Tâches en échec{% endblock %}
+{% block sous_titre %}Les tâches qui n'ont pas abouti, avec la raison.{% endblock %}
+{% block contenu %}
+{% if not taches %}
+  {{ etat_vide("check-circle", "Aucun échec", "Toutes les tâches se sont déroulées normalement.") }}
+{% else %}
+<div class="carte tableau">
+{% for t in taches %}
+  <div class="ligne" style="--i: {{ loop.index0 }}">
+    <div class="ligne-entete">
+      <span class="statut statut-refuse">Échec</span>
+      <span class="meta"><code>{{ t.type }}</code> → <code>{{ t.agent }}</code></span>
+      <span class="meta">{{ t.tentatives }} tentative{{ "s" if t.tentatives > 1 }} · {{ t.maj_le|date_fr }}</span>
+      <form method="post" action="/taches/{{ t.id }}/relancer" class="pousser"><button class="btn btn-secondaire btn-petit">{{ icone("arrow-counter-clockwise") }}<span>Relancer</span></button></form>
+    </div>
+    {% set e_ = t.erreur|expliquer %}
+    {% if e_ %}<p class="erreur-titre">{{ icone("warning-circle") }}<strong>{{ e_.explication }}</strong></p><p class="erreur-conseil">{{ e_.conseil }}</p>{% endif %}
+    <pre class="erreur-code">{{ t.erreur }}</pre>
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}
